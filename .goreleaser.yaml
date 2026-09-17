@@ -131,7 +131,7 @@ homebrew_casks:
     repository:
       owner: bbrainttech
       name: homebrew-tap
-      token: "{{ envOrDefault \"HOMEBREW_TAP_TOKEN\" \"\" }}"
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
     directory: Casks
     commit_author:
       name: migrail-release
