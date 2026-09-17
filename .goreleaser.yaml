@@ -86,11 +86,61 @@ archives:
 checksum:
   name_template: checksums.txt
 
+signs:
+  - id: checksums
+    cmd: cosign
+    signature: "${artifact}.sigstore.json"
+    args:
+      - sign-blob
+      - --bundle=${signature}
+      - ${artifact}
+      - --yes
+    artifacts: checksum
+
+sboms:
+  - artifacts: archive
+
 snapshot:
   version_template: "{{ incpatch .Version }}-snapshot"
 
 changelog:
-  disable: true
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+      - "^build:"
+      - "^tools:"
 
 release:
-  disable: true
+  github:
+    owner: bbrainttech
+    name: migrail
+  draft: true
+  prerelease: auto
+  extra_files:
+    - glob: ./install.sh
+
+homebrew_casks:
+  - name: migrail
+    binaries: [migrail]
+    homepage: https://github.com/bbrainttech/migrail
+    description: Catch dangerous database migrations before they reach production
+    license: Apache-2.0
+    repository:
+      owner: bbrainttech
+      name: homebrew-tap
+      token: "{{ envOrDefault \"HOMEBREW_TAP_TOKEN\" \"\" }}"
+    directory: Casks
+    commit_author:
+      name: migrail-release
+      email: noreply@github.com
+    commit_msg_template: "migrail {{ .Tag }}"
+    skip_upload: auto
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/migrail"]
+          end
