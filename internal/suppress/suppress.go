@@ -42,6 +42,7 @@ type Options struct {
 	Ignores       []ConfigIgnore
 	Rules         []analyze.Rule
 	Dialect       analyze.Dialect
+	PathOf        func(*ir.Migration) string
 }
 
 func Parse(migration *ir.Migration) []*Directive {
@@ -119,8 +120,13 @@ func match(finding *ir.Finding, migration *ir.Migration, directives []*Directive
 		return nil
 	}
 
+	migrationPath := migration.SourcePath
+	if opts.PathOf != nil {
+		migrationPath = opts.PathOf(migration)
+	}
+
 	for _, ignore := range opts.Ignores {
-		if matchesRule(finding, []string{ignore.Rule}, true) && matchesPath(ignore.Path, migration.SourcePath) {
+		if matchesRule(finding, []string{ignore.Rule}, true) && matchesPath(ignore.Path, migrationPath) {
 			return &ir.Suppression{Reason: ignore.Reason, Source: SourceConfig}
 		}
 	}

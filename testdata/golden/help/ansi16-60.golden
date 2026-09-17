@@ -20,6 +20,7 @@
     [1mcheck       [mCheck SQL migrations for locks, rewrites and breaking changes
     [1mexplain     [mExplain what a rule detects and how to fix it
     [1mrules       [mList every rule with its severity and category
+    [1mschema      [mPrint the JSON schema for .migrail.yaml
     [1mversion     [mPrint the migrail version and build details
 
   [1;34mFlags[m

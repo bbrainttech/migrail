@@ -19,6 +19,7 @@
     check       Check SQL migrations for locks, rewrites and breaking changes
     explain     Explain what a rule detects and how to fix it
     rules       List every rule with its severity and category
+    schema      Print the JSON schema for .migrail.yaml
     version     Print the migrail version and build details
 
   Flags

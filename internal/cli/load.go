@@ -43,8 +43,12 @@ func loadMigrations(ctx context.Context, dialect *pg.Dialect, args []string, opt
 		l.forced, _ = discovery.AdapterNamed(opts.framework)
 	}
 
+	if len(args) == 0 && len(opts.cfg.Projects) > 0 {
+		return l.configuredProjects(ctx, opts)
+	}
+
 	if len(args) == 0 {
-		root := opts.dir
+		root := opts.root
 		if root == "" {
 			root = discovery.FindRoot(cwd)
 		}
@@ -154,6 +158,28 @@ func (l loader) directory(ctx context.Context, root string) ([]*ir.Migration, er
 	return migrations, nil
 }
 
+func (l loader) configuredProjects(ctx context.Context, opts checkOptions) ([]*ir.Migration, error) {
+	migrations := []*ir.Migration{}
+
+	for _, project := range opts.cfg.Projects {
+		dir := filepath.Join(opts.root, filepath.FromSlash(project.Path), filepath.FromSlash(project.Migrations))
+		projectLoader := l
+
+		if project.Framework != "" {
+			projectLoader.forced, _ = discovery.AdapterNamed(project.Framework)
+		}
+
+		loaded, err := projectLoader.directory(ctx, dir)
+		if err != nil {
+			return nil, err
+		}
+
+		migrations = append(migrations, loaded...)
+	}
+
+	return migrations, nil
+}
+
 func (l loader) projects(ctx context.Context, root string) ([]discovery.Project, error) {
 	if l.forced != nil {
 		return []discovery.Project{{Root: root, Dir: ".", Adapter: l.forced}}, nil
@@ -168,7 +194,17 @@ func (l loader) projects(ctx context.Context, root string) ([]discovery.Project,
 		return nil, internalError(err)
 	}
 
+	if len(projects) == 0 && hasSQLFiles(root) {
+		projects = append(projects, discovery.Project{Root: root, Dir: ".", Adapter: sqlfiles.Adapter{}})
+	}
+
 	return projects, nil
+}
+
+func hasSQLFiles(dir string) bool {
+	matches, err := filepath.Glob(filepath.Join(dir, "*.sql"))
+
+	return err == nil && len(matches) > 0
 }
 
 func (l loader) load(root string, adapter adapters.Adapter, file adapters.File) (*ir.Migration, error) {

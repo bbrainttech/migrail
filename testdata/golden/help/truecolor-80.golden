@@ -19,6 +19,7 @@
     [1;38;2;230;230;234mcheck       [m[38;2;230;230;234mCheck SQL migrations for locks, rewrites and breaking changes[m
     [1;38;2;230;230;234mexplain     [m[38;2;230;230;234mExplain what a rule detects and how to fix it[m
     [1;38;2;230;230;234mrules       [m[38;2;230;230;234mList every rule with its severity and category[m
+    [1;38;2;230;230;234mschema      [m[38;2;230;230;234mPrint the JSON schema for .migrail.yaml[m
     [1;38;2;230;230;234mversion     [m[38;2;230;230;234mPrint the migrail version and build details[m
 
   [1;38;2;124;140;255mFlags[m

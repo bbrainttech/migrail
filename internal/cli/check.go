@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/bbrainttech/migrail/internal/analyze"
+	"github.com/bbrainttech/migrail/internal/config"
 	pg "github.com/bbrainttech/migrail/internal/dialect/postgres"
 	"github.com/bbrainttech/migrail/internal/discovery"
 	"github.com/bbrainttech/migrail/internal/ir"
@@ -46,6 +47,8 @@ type checkOptions struct {
 	dir       string
 	base      string
 	all       bool
+	root      string
+	cfg       config.Config
 	compact   bool
 	quiet     bool
 	verbose   bool
@@ -88,6 +91,14 @@ func newCheckCommand(ui *uiFlags) *cobra.Command {
 func runCheck(ctx context.Context, cmd *cobra.Command, args []string, opts checkOptions) error {
 	started := time.Now()
 	dialect := pg.New()
+
+	if err := applyConfig(cmd, &opts); err != nil {
+		return err
+	}
+
+	if err := opts.ui.validate(); err != nil {
+		return err
+	}
 
 	dbVersion, err := validateCheckOptions(dialect, opts)
 	if err != nil {
@@ -227,7 +238,19 @@ func applySuppressions(result analyze.Result, migrations []*ir.Migration, dialec
 		active[rule.Meta().ID] = true
 	}
 
-	result = suppress.Apply(result, migrations, suppress.Options{RequireReason: true, Rules: all, Dialect: dialect})
+	ignores := make([]suppress.ConfigIgnore, 0, len(opts.cfg.Ignore))
+	for _, ignore := range opts.cfg.Ignore {
+		ignores = append(ignores, suppress.ConfigIgnore{Path: ignore.Path, Rule: ignore.Rule, Reason: ignore.Reason})
+	}
+
+	result = suppress.Apply(result, migrations, suppress.Options{
+		RequireReason: opts.cfg.RequireIgnoreReason(),
+		Ignores:       ignores,
+		Rules:         all,
+		Dialect:       dialect,
+		PathOf:        relativeToRoot(opts.root),
+	})
+	severityOverrides(opts.cfg, result.Findings)
 
 	kept := result.Findings[:0]
 	for _, finding := range result.Findings {

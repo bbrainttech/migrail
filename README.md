@@ -144,6 +144,49 @@ Exit codes: `0` no failing findings, `1` findings at or above `--fail-on`, `2` u
 
 Shell completion: `migrail completion bash|zsh|fish|powershell`.
 
+### Configuration
+
+migrail works without a config file. To set defaults for your team, add `.migrail.yaml` to the repository root:
+
+```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bbrainttech/migrail/main/schemas/config.schema.json
+version: 1
+
+db:
+  version: "16"
+
+projects:                     # omit to detect projects automatically
+  - path: services/api
+    framework: goose
+    migrations: db/migrations
+
+git:
+  base: origin/main
+  check: changed              # changed or all
+
+rules:
+  MR403: off                  # severity shorthand
+  create-index-non-concurrent:
+    severity: warning
+
+policy:
+  fail_on: error              # error, warning, notice or never
+  require_ignore_reason: true
+
+ignore:
+  - path: "db/migrations/2019*"
+    reason: applied long ago
+  - rule: MR502
+    path: "legacy/**"
+    reason: legacy tables are dropped on purpose
+
+output:
+  format: pretty
+  theme: auto
+```
+
+Command-line flags override the config file. An invalid config stops the run with exit code 2 and points at the line. `migrail schema config` prints the JSON schema for editor autocompletion.
+
 ### Ignoring findings
 
 When a finding is safe in your situation, ignore it with a comment and say why:

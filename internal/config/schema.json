@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/bbrainttech/migrail/schemas/config.schema.json",
+  "title": "migrail configuration",
+  "description": "Configuration for migrail, the database migration checker. Save it as .migrail.yaml in the repository root.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version"],
+  "properties": {
+    "version": {
+      "description": "Config format version.",
+      "const": 1
+    },
+    "db": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dialect": {
+          "description": "Database dialect.",
+          "enum": ["postgres"]
+        },
+        "version": {
+          "description": "PostgreSQL major version in production, 12 to 18.",
+          "type": "string",
+          "pattern": "^(1[2-8])(\\.[0-9]+)?$"
+        }
+      }
+    },
+    "projects": {
+      "description": "Migration projects. Omit to detect them automatically.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path"],
+        "properties": {
+          "name": { "type": "string" },
+          "path": { "description": "Project directory, relative to this file.", "type": "string" },
+          "framework": {
+            "description": "Migration tool. Omit to detect it.",
+            "enum": ["goose", "golang-migrate", "atlas", "flyway", "prisma", "drizzle", "dbmate", "sqitch", "sql"]
+          },
+          "migrations": { "description": "Migrations directory, relative to the project path.", "type": "string" }
+        }
+      }
+    },
+    "git": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "base": { "description": "Branch or commit to compare against.", "type": "string" },
+        "check": { "description": "Check changed migrations or all migrations.", "enum": ["changed", "all"] }
+      }
+    },
+    "rules": {
+      "description": "Severity overrides by rule ID or slug.",
+      "type": "object",
+      "additionalProperties": {
+        "oneOf": [
+          { "enum": ["error", "warning", "notice", "off"] },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "severity": { "enum": ["error", "warning", "notice", "off"] }
+            }
+          }
+        ]
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fail_on": { "description": "Exit with code 1 on findings at or above this severity.", "enum": ["error", "warning", "notice", "never"] },
+        "require_ignore_reason": { "description": "Require reason=\"...\" on ignore comments.", "type": "boolean" }
+      }
+    },
+    "ignore": {
+      "description": "Findings to ignore by path and rule.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "path": { "description": "Glob relative to this file. ** matches any number of directories.", "type": "string" },
+          "rule": { "description": "Rule ID or slug. Omit to ignore every rule for the path.", "type": "string" },
+          "reason": { "type": "string" }
+        }
+      }
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "format": { "enum": ["pretty", "json"] },
+        "theme": { "enum": ["auto", "dark", "light", "mono"] },
+        "color": { "enum": ["auto", "always", "never"] },
+        "compact": { "type": "boolean" },
+        "hyperlinks": { "enum": ["auto", "always", "never"] }
+      }
+    }
+  }
+}

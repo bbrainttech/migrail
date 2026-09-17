@@ -1498,6 +1498,7 @@ Durations are **focused working days** (a day = one solid Claude Code session wi
   - MR304 ships off by default. Without code scanning it would report every `DROP TABLE` a second time next to MR502. It turns on by default with the code scanner in M5.
   - MR403 reports once per migration, at the first statement that locks an existing table without a `lock_timeout`.
   - MR106 covers table constraints (`ADD UNIQUE`, `ADD PRIMARY KEY`). Inline `ADD COLUMN … UNIQUE` isn't detected yet.
+  - The config file is validated in Go (strict YAML decoding plus value checks) instead of with a JSON schema library. `schemas/config.schema.json` is still published for editors, and a test keeps its keys in sync with the config structs. v0.1 supports `version`, `db.dialect`, `db.version`, `projects`, `git`, `rules` severities, `policy.fail_on`, `policy.require_ignore_reason`, `ignore` and `output`. Rule options such as `lock_timeout_max`, `thresholds`, `codescan`, `capture` and `db.url_env` arrive with the features that use them.
   - MR202 treats a small list of known volatile functions as definite, a list of known non-volatile functions as safe, and any other function in a default as a warning with `possible` confidence.
 
 ### M4: Every framework (days 9–14)
