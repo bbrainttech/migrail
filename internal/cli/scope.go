@@ -78,7 +78,7 @@ func filterChanged(migrations []*ir.Migration, repo gitx.Repo, cwd string, chang
 	for _, migration := range migrations {
 		migration.ChangeState = ir.ChangeStateNew
 
-		if relative, ok := repo.Relative(filepath.Join(cwd, filepath.FromSlash(migration.SourcePath))); ok {
+		if relative, ok := repo.Relative(absolutePath(cwd, filepath.FromSlash(migration.SourcePath))); ok {
 			migration.ChangeState = ir.ChangeStateUnchanged
 
 			if state, changed := changes[relative]; changed {
