@@ -6,7 +6,7 @@ migrail reads your migrations the way your database will run them. It tells you 
 
 It's free and open source. You don't need an account or a config file, and it works on the migrations you already have.
 
-> migrail is in early development and has no release yet. You can build it from source and check PostgreSQL SQL files today. Migration tool detection, git-aware checks and more rules arrive with v0.1.
+> migrail is in early development. v0.1 checks PostgreSQL migrations written in SQL. Framework migrations such as Django, Rails and Laravel arrive in v0.2.
 
 ## What it looks like
 
@@ -61,21 +61,41 @@ migrail is built around four commitments:
 
 | Database | Status |
 |---|---|
-| PostgreSQL 12–18 | Planned for v0.1 |
+| PostgreSQL 12–18 | Available |
 | MySQL, MariaDB | Planned for v2 |
 | SQL Server, SQLite, CockroachDB | Planned for v3 |
 
 | Migration tool | Status |
 |---|---|
-| golang-migrate, goose, Atlas, Flyway, Prisma, Drizzle, dbmate, sqitch, plain `.sql` directories | Available from source |
+| golang-migrate, goose, Atlas, Flyway, Prisma, Drizzle, dbmate, sqitch, plain `.sql` directories | Available |
 | Django, Alembic, Rails, Laravel, EF Core, Knex, TypeORM, Sequelize, Liquibase | Planned for v0.2 |
 | Any other tool, through capture mode | Planned for v0.2 |
 
 ## Installation
 
-migrail has no release yet. It will ship as a single binary through Homebrew, npm, PyPI, RubyGems, Composer, NuGet, Scoop, Docker and a GitHub Action.
+migrail is a single binary for macOS, Linux and Windows on amd64 and arm64.
 
-To build it from source you need Go 1.26.4 or newer and a C compiler:
+With Homebrew on macOS:
+
+```
+brew install bbrainttech/tap/migrail
+```
+
+With the install script on macOS or Linux. It downloads the binary for your machine, checks it against the release checksums and installs it to `~/.local/bin`:
+
+```
+curl -fsSL https://github.com/bbrainttech/migrail/releases/latest/download/install.sh | sh
+```
+
+Pass `--version v0.1.0` to pin a release or `--dir` to install somewhere else.
+
+On Windows, download the zip for your architecture from the [releases page](https://github.com/bbrainttech/migrail/releases) and put `migrail.exe` on your `PATH`.
+
+Each release publishes `checksums.txt`, a cosign signature for it (`checksums.txt.sigstore.json`) and an SBOM for every archive.
+
+npm, PyPI, RubyGems, Composer, NuGet, Scoop, Docker and a GitHub Action are planned for v0.2.
+
+To build from source you need Go 1.26.4 or newer and a C compiler:
 
 ```
 git clone https://github.com/bbrainttech/migrail
@@ -88,7 +108,7 @@ make build
 From anywhere in your repository, find the migrations, detect the migration tool and check them:
 
 ```
-./bin/migrail check --db-version 16
+migrail check --db-version 16
 ```
 
 By default, migrail only checks migrations that are new or changed compared with the base branch, including uncommitted and untracked files. The base branch comes from `--base`, then `GITHUB_BASE_REF` or `CI_MERGE_REQUEST_TARGET_BRANCH_NAME` in CI, then `origin/HEAD`, `main` or `master`. Editing a migration that is already on the base branch is reported as MR401. Use `--all` to check every migration.
@@ -96,8 +116,8 @@ By default, migrail only checks migrations that are new or changed compared with
 Check specific files or directories:
 
 ```
-./bin/migrail check db/migrations/20260917101500_add_orders_status.sql --db-version 16
-./bin/migrail check services/billing/migrations
+migrail check db/migrations/20260917101500_add_orders_status.sql --db-version 16
+migrail check services/billing/migrations
 ```
 
 migrail reads each tool's own conventions: goose `-- +goose Up` sections and `NO TRANSACTION`, dbmate `-- migrate:up` and `transaction:false`, Atlas `atlas:txmode`, the Prisma, Drizzle and sqitch plan order, Flyway versions and golang-migrate `.up.sql` files.
@@ -105,14 +125,14 @@ migrail reads each tool's own conventions: goose `-- +goose Up` sections and `NO
 Read SQL from standard input:
 
 ```
-echo "ALTER TABLE users RENAME COLUMN email TO email_address;" | ./bin/migrail check -
+echo "ALTER TABLE users RENAME COLUMN email TO email_address;" | migrail check -
 ```
 
 Learn what a rule detects and how to fix it, or list every rule:
 
 ```
-./bin/migrail explain MR101
-./bin/migrail rules
+migrail explain MR101
+migrail rules
 ```
 
 | `check` flag | Meaning |
@@ -234,10 +254,10 @@ Statements on tables created earlier in the same set of files don't trigger lock
 
 ## Roadmap
 
-- [ ] Foundations: project setup, CI, cross-platform builds
+- [x] Foundations: project setup, CI, cross-platform builds
 - [x] Analysis engine: Postgres parser, first rules, JSON output
 - [x] Terminal output: colors, code frames, `explain` and `rules`
-- [ ] v0.1: PostgreSQL rules and SQL migration tools
+- [x] v0.1: PostgreSQL rules and SQL migration tools
 - [ ] v0.2: framework support, capture mode, CI integrations, package managers
 - [ ] v0.3: application code checks, live database estimates, interactive explorer
 - [ ] v1.0: full rule catalog, stable schemas, documentation site

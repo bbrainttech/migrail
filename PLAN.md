@@ -1345,7 +1345,8 @@ Every wrapper package version == binary version. A single release pipeline publi
 ### 22.2 Build matrix (cgo)
 Targets: `darwin/arm64`, `darwin/amd64`, `linux/amd64`, `linux/arm64` (both **musl static** for portability), `windows/amd64`, `windows/arm64`.
 - Approach: goreleaser with **zig cc** as C cross-compiler on one Linux runner for `linux/*` (musl, static) and `windows/*`. **darwin builds run on a macOS runner with native clang.** Checked on 2026-09-17 with zig 0.14.1 and a probe binary that links pg_query_go v6: Linux and Windows targets build and run, but darwin fails to link because zig ships no macOS SDK (`libresolv`, `CoreFoundation`).
-- goreleaser OSS can't merge builds from several runners (`--split`/`--merge` is Pro). CI builds each group with `goreleaser build --id …`. M3 decides how the release job assembles archives from both runners.
+- goreleaser OSS can't merge builds from several runners (`--split`/`--merge` is Pro). CI builds each group with `goreleaser build --id …` to catch breakage early.
+- Releases run on one macOS runner (`.github/workflows/release.yml`): native clang builds darwin, and zig 0.14.1 builds `linux/*` and `windows/*` from the same host, so nothing has to be merged. Checked on 2026-09-17: zig on an arm64 Mac builds static musl Linux binaries and Windows PE binaries for amd64 and arm64. The same workflow builds a snapshot without publishing whenever `.goreleaser.yaml`, `install.sh` or the workflow changes on `main` or `staging`.
 - macOS binaries codesigned + notarized; Windows binaries signed (when certificate is available).
 
 ### 22.3 Supply chain
@@ -1502,7 +1503,7 @@ Durations are **focused working days** (a day = one solid Claude Code session wi
   - Lock verification (2026-09-17): `tools/lockverify` runs every `lockmodel` entry and the lock conflict matrix against PostgreSQL 12, 13, 14, 15, 16, 17 and 18 in Docker, with 0 mismatches. It uses the Docker CLI and pgx instead of testcontainers-go. Scan claims aren't verified yet, and TRUNCATE and DROP TABLE skip the rewrite check because they replace or remove storage instead of rewriting rows.
   - Real repositories (2026-09-17, `check --all`): Mattermost (224 golang-migrate migrations), Supabase Auth (75 templated SQL migrations) and Cal.com (595 Prisma migrations) ran with zero crashes and zero rule errors. Supabase Auth led to masking Go template expressions before parsing.
   - Clean run with 3 changed goose migrations in a 203-migration repository: 40 ms on an M-series Mac, against the 150 ms budget.
-  - Still open for M3: Homebrew tap, install script and the GitHub release job. They need the repository owner, release accounts and a decision on assembling darwin archives built on a separate runner.
+  - Release (2026-09-17): a `v*` tag runs goreleaser on one macOS runner (§22.2). It creates a draft GitHub release with archives, `checksums.txt` signed by cosign keyless, a syft SBOM per archive and `install.sh`, and pushes a cask to `bbrainttech/homebrew-tap` using the `HOMEBREW_TAP_TOKEN` secret. The cask removes the quarantine attribute because macOS binaries aren't notarized yet. `install.sh` supports macOS and Linux and verifies the checksum; Windows users download the zip.
   - MR202 treats a small list of known volatile functions as definite, a list of known non-volatile functions as safe, and any other function in a default as a warning with `possible` confidence.
 
 ### M4: Every framework (days 9–14)
