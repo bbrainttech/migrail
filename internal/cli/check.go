@@ -144,7 +144,7 @@ func runCheck(ctx context.Context, cmd *cobra.Command, args []string, opts check
 		return internalError(err)
 	}
 
-	result = applySuppressions(result, migrations, dialect, opts)
+	result = applySuppressions(result, migrations, dialect, dbVersion, opts)
 
 	finish.Done("Analyzed", fmt.Sprintf("%d %s %s %d rules", result.Statements, components.Plural(result.Statements, "statement", "statements"), stderr.theme.Symbols.Dot, result.RulesRun))
 
@@ -241,11 +241,17 @@ func writeCheckReport(
 	}, options)
 }
 
-func applySuppressions(result analyze.Result, migrations []*ir.Migration, dialect *pg.Dialect, opts checkOptions) analyze.Result {
+func applySuppressions(
+	result analyze.Result,
+	migrations []*ir.Migration,
+	dialect *pg.Dialect,
+	dbVersion ir.Version,
+	opts checkOptions,
+) analyze.Result {
 	all := rules.All()
 	active := map[string]bool{}
 
-	for _, rule := range analyze.ActiveRules(all, dialect.Name(), analyze.Options{Only: opts.rules, Skip: opts.skipRules}) {
+	for _, rule := range analyze.ActiveRules(all, dialect.Name(), analyze.Options{DBVersion: dbVersion, Only: opts.rules, Skip: opts.skipRules}) {
 		active[rule.Meta().ID] = true
 	}
 
@@ -260,6 +266,7 @@ func applySuppressions(result analyze.Result, migrations []*ir.Migration, dialec
 		Rules:         all,
 		Dialect:       dialect,
 		PathOf:        relativeToRoot(opts.root),
+		Active:        func(ruleID string) bool { return active[ruleID] },
 	})
 	severityOverrides(opts.cfg, result.Findings)
 

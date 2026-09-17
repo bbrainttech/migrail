@@ -43,6 +43,7 @@ type Options struct {
 	Rules         []analyze.Rule
 	Dialect       analyze.Dialect
 	PathOf        func(*ir.Migration) string
+	Active        func(ruleID string) bool
 }
 
 func Parse(migration *ir.Migration) []*Directive {
@@ -120,16 +121,7 @@ func match(finding *ir.Finding, migration *ir.Migration, directives []*Directive
 		return nil
 	}
 
-	migrationPath := migration.SourcePath
-	if opts.PathOf != nil {
-		migrationPath = opts.PathOf(migration)
-	}
-
-	for _, ignore := range opts.Ignores {
-		if matchesRule(finding, []string{ignore.Rule}, true) && matchesPath(ignore.Path, migrationPath) {
-			return &ir.Suppression{Reason: ignore.Reason, Source: SourceConfig}
-		}
-	}
+	suppression := configSuppression(finding, migration, opts)
 
 	for _, directive := range directives {
 		if !directive.File && (finding.Statement == nil || finding.Statement.Index != directive.Statement) {
@@ -142,14 +134,44 @@ func match(finding *ir.Finding, migration *ir.Migration, directives []*Directive
 
 		directive.used = true
 
-		if directive.Reason == "" && opts.RequireReason {
-			continue
+		if suppression == nil && (directive.Reason != "" || !opts.RequireReason) {
+			suppression = &ir.Suppression{Reason: directive.Reason, Source: SourceInline, Line: directive.Line}
 		}
+	}
 
-		return &ir.Suppression{Reason: directive.Reason, Source: SourceInline, Line: directive.Line}
+	return suppression
+}
+
+func configSuppression(finding *ir.Finding, migration *ir.Migration, opts Options) *ir.Suppression {
+	migrationPath := migration.SourcePath
+	if opts.PathOf != nil {
+		migrationPath = opts.PathOf(migration)
+	}
+
+	for _, ignore := range opts.Ignores {
+		if matchesRule(finding, []string{ignore.Rule}, true) && matchesPath(ignore.Path, migrationPath) {
+			return &ir.Suppression{Reason: ignore.Reason, Source: SourceConfig}
+		}
 	}
 
 	return nil
+}
+
+func namesInactiveRule(directive *Directive, opts Options) bool {
+	if opts.Active == nil {
+		return false
+	}
+
+	for _, name := range directive.Rules {
+		for _, rule := range opts.Rules {
+			meta := rule.Meta()
+			if (strings.EqualFold(name, meta.ID) || name == meta.Slug) && !opts.Active(meta.ID) {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 func matchesRule(finding *ir.Finding, rules []string, emptyMatchesAll bool) bool {
@@ -220,7 +242,7 @@ func diagnostics(migration *ir.Migration, directive *Directive, opts Options) []
 		}))
 	}
 
-	if !directive.used {
+	if !directive.used && !namesInactiveRule(directive, opts) {
 		findings = append(findings, synthetic(migration, RuleUnusedIgnore, opts, ir.Finding{
 			Title:    "Ignore comment doesn't match any finding",
 			Why:      "Nothing it names is reported here, so the comment only adds noise and can hide a future finding by accident.",

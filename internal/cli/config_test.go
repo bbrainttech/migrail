@@ -105,3 +105,20 @@ func TestCheckReportsInvalidConfig(t *testing.T) {
 		}
 	}
 }
+
+func TestGitScopeUsesProjectRoot(t *testing.T) {
+	t.Parallel()
+
+	root := writeProject(t, map[string]string{
+		"db/migrations/001_index.sql": "CREATE INDEX idx_orders_status ON orders (status);\n",
+	})
+
+	run := runCLI(t, "", "check", "-f", "json", "--db-version", "16", "--dir", root)
+	if run.code != exitFindings {
+		t.Fatalf("exit code = %d, want %d: migrations outside the current repository must still be checked (stderr %q)", run.code, exitFindings, run.stderr)
+	}
+
+	if !strings.Contains(run.stderr, "isn't a git repository") {
+		t.Errorf("stderr = %q, want the not-a-repository notice for --dir", run.stderr)
+	}
+}

@@ -197,6 +197,10 @@ func Complete(dialect Dialect, meta ir.RuleMeta, migration *ir.Migration, stmt *
 		finding.Location.Span = ir.Span{Start: ir.Position{Line: 1, Column: 1}, End: ir.Position{Line: 1, Column: 1}}
 	}
 
+	if stmt == nil {
+		statementFingerprint = fmt.Sprintf("line:%d", finding.Location.Span.Start.Line)
+	}
+
 	finding.Location.Path = migration.SourcePath
 
 	sum := sha256.Sum256([]byte(meta.ID + "\x00" + migration.ID + "\x00" + statementFingerprint))

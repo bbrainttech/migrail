@@ -111,7 +111,7 @@ func relativeToRoot(root string) func(*ir.Migration) string {
 
 		absolute := filepath.Join(cwd, filepath.FromSlash(migration.SourcePath))
 
-		relative, relErr := filepath.Rel(root, absolute)
+		relative, relErr := filepath.Rel(absolutePath(cwd, root), absolute)
 		if relErr != nil {
 			return migration.SourcePath
 		}

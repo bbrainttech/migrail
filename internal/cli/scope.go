@@ -31,7 +31,12 @@ func applyGitScope(
 		return nil, changeScope{}, internalError(fmt.Errorf("find working directory: %w", err))
 	}
 
-	repo, ok := gitx.Open(ctx, cwd)
+	projectRoot := cwd
+	if opts.root != "" {
+		projectRoot = absolutePath(cwd, opts.root)
+	}
+
+	repo, ok := gitx.Open(ctx, projectRoot)
 	if !ok {
 		if !checkEverything {
 			notice("this isn't a git repository, so migrail checks every migration.")
@@ -71,9 +76,11 @@ func filterChanged(migrations []*ir.Migration, repo gitx.Repo, cwd string, chang
 	kept := make([]*ir.Migration, 0, len(migrations))
 
 	for _, migration := range migrations {
-		migration.ChangeState = ir.ChangeStateUnchanged
+		migration.ChangeState = ir.ChangeStateNew
 
 		if relative, ok := repo.Relative(filepath.Join(cwd, filepath.FromSlash(migration.SourcePath))); ok {
+			migration.ChangeState = ir.ChangeStateUnchanged
+
 			if state, changed := changes[relative]; changed {
 				migration.ChangeState = state
 			}
@@ -85,4 +92,12 @@ func filterChanged(migrations []*ir.Migration, repo gitx.Repo, cwd string, chang
 	}
 
 	return kept
+}
+
+func absolutePath(cwd, path string) string {
+	if filepath.IsAbs(path) {
+		return path
+	}
+
+	return filepath.Join(cwd, path)
 }
