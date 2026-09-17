@@ -4,3 +4,4 @@
 ✖ [1mMR302[m db/migrations/20260917102000_rename_user_email.sql:1  Renaming column "users.email" breaks running code
 ✖ [1mMR101[m db/migrations/20260917102100_index_user_email.sql:1  Index creation blocks writes on "users"
 4 errors · 1 warning · 118ms
+[1mFailing:[m 4 findings at or above "error"

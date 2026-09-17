@@ -4,3 +4,4 @@
 [38;2;255;107;129m✖[m [1;38;2;230;230;234mMR302[m [38;2;230;230;234mdb/migrations/20260917102000_rename_user_email.sql:1[m  [38;2;230;230;234mRenaming column [m[38;2;124;140;255m"users.email"[m[38;2;230;230;234m breaks running code[m
 [38;2;255;107;129m✖[m [1;38;2;230;230;234mMR101[m [38;2;230;230;234mdb/migrations/20260917102100_index_user_email.sql:1[m  [38;2;230;230;234mIndex creation blocks writes on [m[38;2;124;140;255m"users"[m[38;2;230;230;234m[m
 [38;2;255;107;129m4 errors[m[38;2;139;141;152m · [m[38;2;245;185;92m1 warning[m[38;2;139;141;152m · [m[38;2;139;141;152m118ms[m
+[1;38;2;255;107;129mFailing:[m [38;2;230;230;234m4 findings at or above "error"[m

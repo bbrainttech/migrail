@@ -41,7 +41,7 @@ func internalError(err error) error {
 }
 
 func Execute(ctx context.Context, args []string, stdout, stderr io.Writer) int {
-	root := newRootCommand(stdout, stderr)
+	root, ui := newRoot(stdout, stderr)
 	root.SetArgs(args)
 
 	err := root.ExecuteContext(ctx)
@@ -54,7 +54,7 @@ func Execute(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	}
 
 	code := exitCode(err)
-	writeError(stderr, err, code)
+	writeError(stderr, err, code, ui.settings(ciEnabled(false)))
 
 	return code
 }
@@ -68,14 +68,18 @@ func exitCode(err error) int {
 	return exitUsage
 }
 
-func writeError(w io.Writer, err error, code int) {
+func writeError(w io.Writer, err error, code int, settings term.Settings) {
 	var exitErr *exitError
 	if errors.As(err, &exitErr) && exitErr.silent {
 		return
 	}
 
-	caps := term.Detect(w, os.Environ(), term.Settings{Color: term.ColorAuto, Theme: term.ThemeDark})
-	t := theme.New(caps.Profile, true, caps.Unicode)
+	if settings.Theme == term.ThemeAuto || settings.Theme == "" {
+		settings.Theme = term.ThemeDark
+	}
+
+	caps := term.Detect(w, os.Environ(), settings)
+	t := theme.New(caps.Profile, caps.Dark, caps.Unicode)
 	out := &colorprofile.Writer{Forward: w, Profile: caps.Profile}
 
 	_, _ = fmt.Fprintln(out, t.Error.Render(t.Symbols.Error)+" "+t.Fg.Render(sentence(err.Error())))
@@ -94,7 +98,13 @@ func sentence(message string) string {
 }
 
 func newRootCommand(stdout, stderr io.Writer) *cobra.Command {
-	ui := &uiFlags{}
+	root, _ := newRoot(stdout, stderr)
+
+	return root
+}
+
+func newRoot(stdout, stderr io.Writer) (*cobra.Command, *uiFlags) {
+	ui := &uiFlags{color: string(term.ColorAuto), theme: string(term.ThemeAuto)}
 
 	root := &cobra.Command{
 		Use:   "migrail",
@@ -119,5 +129,5 @@ func newRootCommand(stdout, stderr io.Writer) *cobra.Command {
 	root.AddCommand(newCheckCommand(ui), newExplainCommand(ui), newRulesCommand(ui), newVersionCommand(ui))
 	installHelp(root, ui)
 
-	return root
+	return root, ui
 }

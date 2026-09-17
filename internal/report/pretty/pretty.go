@@ -97,8 +97,13 @@ func (r renderer) compact() []string {
 	}
 
 	parts = append(parts, t.Muted.Render(formatDuration(r.in.Elapsed)))
+	lines = append(lines, strings.Join(parts, r.dot()))
 
-	return append(lines, strings.Join(parts, r.dot()))
+	if failing := r.failingLine(); failing != "" {
+		lines = append(lines, strings.TrimPrefix(failing, "  "))
+	}
+
+	return lines
 }
 
 func (r renderer) full() []string {

@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/bbrainttech/migrail/internal/golden"
+	"github.com/bbrainttech/migrail/internal/ui/term"
 )
 
 const (
@@ -38,7 +39,7 @@ func runCLI(t *testing.T, stdin string, args ...string) checkRun {
 
 	if err != nil {
 		code = exitCode(err)
-		writeError(&stderr, err, code)
+		writeError(&stderr, err, code, term.Settings{})
 	}
 
 	return checkRun{code: code, stdout: stdout.String(), stderr: stderr.String()}

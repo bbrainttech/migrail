@@ -25,10 +25,11 @@ type Options struct {
 }
 
 type Progress struct {
-	w     io.Writer
-	theme theme.Theme
-	opts  Options
-	mu    sync.Mutex
+	styled io.Writer
+	raw    io.Writer
+	theme  theme.Theme
+	opts   Options
+	mu     sync.Mutex
 }
 
 type Phase struct {
@@ -39,8 +40,8 @@ type Phase struct {
 	once     sync.Once
 }
 
-func New(w io.Writer, t theme.Theme, opts Options) *Progress {
-	return &Progress{w: w, theme: t, opts: opts}
+func New(styled, raw io.Writer, t theme.Theme, opts Options) *Progress {
+	return &Progress{styled: styled, raw: raw, theme: t, opts: opts}
 }
 
 func (p *Progress) Start(name, detail string) *Phase {
@@ -73,11 +74,12 @@ func (ph *Phase) animate(name, detail string) {
 	defer ticker.Stop()
 
 	for frame := 0; ; frame++ {
-		ph.progress.write(clearLine + ActiveLine(ph.progress.theme, frame, name, detail))
+		ph.progress.write(ph.progress.raw, clearLine)
+		ph.progress.write(ph.progress.styled, ActiveLine(ph.progress.theme, frame, name, detail))
 
 		select {
 		case <-ph.stop:
-			ph.progress.write(clearLine)
+			ph.progress.write(ph.progress.raw, clearLine)
 
 			return
 		case <-ticker.C:
@@ -89,7 +91,7 @@ func (ph *Phase) Done(name, detail string) {
 	ph.finish()
 
 	if ph.progress.opts.Verbose {
-		ph.progress.write(DoneLine(ph.progress.theme, name, detail, time.Since(ph.started)) + "\n")
+		ph.progress.write(ph.progress.styled, DoneLine(ph.progress.theme, name, detail, time.Since(ph.started))+"\n")
 	}
 }
 
@@ -104,11 +106,11 @@ func (ph *Phase) finish() {
 	})
 }
 
-func (p *Progress) write(text string) {
+func (p *Progress) write(w io.Writer, text string) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	_, _ = io.WriteString(p.w, text)
+	_, _ = io.WriteString(w, text)
 }
 
 func ActiveLine(t theme.Theme, frame int, name, detail string) string {

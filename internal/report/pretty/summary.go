@@ -86,12 +86,23 @@ func (r renderer) summary() []string {
 		lines = append(lines, left, "  "+right)
 	}
 
-	if failing := r.failing(); failing > 0 {
-		lines = append(lines, "  "+t.Strong(t.Error).Render("Failing:")+" "+
-			t.Fg.Render(fmt.Sprintf("%d %s at or above %q", failing, components.Plural(failing, "finding", "findings"), r.in.FailOn)))
+	if failing := r.failingLine(); failing != "" {
+		lines = append(lines, failing)
 	}
 
 	return lines
+}
+
+func (r renderer) failingLine() string {
+	failing := r.failing()
+	if failing == 0 {
+		return ""
+	}
+
+	t := r.t
+
+	return "  " + t.Strong(t.Error).Render("Failing:") + " " +
+		t.Fg.Render(fmt.Sprintf("%d %s at or above %q", failing, components.Plural(failing, "finding", "findings"), r.in.FailOn))
 }
 
 func (r renderer) failing() int {

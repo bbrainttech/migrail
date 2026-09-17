@@ -37,7 +37,7 @@ func TestVerbosePhasesWithoutAnimation(t *testing.T) {
 
 	var out bytes.Buffer
 
-	p := New(&out, theme.New(0, true, false), Options{Verbose: true})
+	p := New(&out, &out, theme.New(0, true, false), Options{Verbose: true})
 	p.Start("Discovering", "1 file").Done("Discovered", "1 migration")
 	p.Start("Analyzing", "6 rules").Abort()
 
@@ -52,7 +52,7 @@ func TestSpinnerAppearsOnlyForSlowPhases(t *testing.T) {
 
 	var fast bytes.Buffer
 
-	New(&fast, theme.New(0, true, true), Options{Animate: true}).Start("Analyzing", "").Done("Analyzed", "")
+	New(&fast, &fast, theme.New(0, true, true), Options{Animate: true}).Start("Analyzing", "").Done("Analyzed", "")
 
 	if fast.Len() != 0 {
 		t.Errorf("fast phase drew a spinner: %q", fast.String())
@@ -60,7 +60,7 @@ func TestSpinnerAppearsOnlyForSlowPhases(t *testing.T) {
 
 	var slow bytes.Buffer
 
-	phase := New(&slow, theme.New(0, true, true), Options{Animate: true}).Start("Analyzing", "6 rules")
+	phase := New(&slow, &slow, theme.New(0, true, true), Options{Animate: true}).Start("Analyzing", "6 rules")
 
 	time.Sleep(appearAfter + 2*frameInterval)
 	phase.Done("Analyzed", "")

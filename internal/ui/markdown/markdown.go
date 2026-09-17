@@ -45,10 +45,10 @@ func (r Renderer) Render(source string) string {
 		case strings.HasPrefix(line, "```"):
 			block, next := r.codeBlock(lines, i)
 			blocks, i = append(blocks, block), next
-		case strings.HasPrefix(line, "# "):
-			blocks, i = append(blocks, indent+r.Theme.Strong(r.Theme.Accent).Render(r.heading(line[2:]))), i+1
-		case strings.HasPrefix(line, "## "):
-			blocks, i = append(blocks, indent+r.Theme.Strong(r.Theme.Fg).Render(r.heading(line[3:]))), i+1
+		case headingLevel(line) == 1:
+			blocks, i = append(blocks, indent+r.Theme.Strong(r.Theme.Accent).Render(r.heading(headingText(line)))), i+1
+		case headingLevel(line) > 1:
+			blocks, i = append(blocks, indent+r.Theme.Strong(r.Theme.Fg).Render(r.heading(headingText(line)))), i+1
 		case strings.HasPrefix(line, "|"):
 			block, next := r.table(lines, i)
 			blocks, i = append(blocks, block), next
@@ -62,6 +62,19 @@ func (r Renderer) Render(source string) string {
 	}
 
 	return strings.Join(blocks, "\n\n") + "\n"
+}
+
+func headingLevel(line string) int {
+	level := len(line) - len(strings.TrimLeft(line, "#"))
+	if level == 0 || level > 6 || len(line) == level || line[level] != ' ' {
+		return 0
+	}
+
+	return level
+}
+
+func headingText(line string) string {
+	return strings.TrimSpace(strings.TrimLeft(line, "#"))
 }
 
 func (r Renderer) heading(text string) string {
@@ -93,7 +106,7 @@ func (r Renderer) paragraph(lines []string, start int) (string, int) {
 	end := start
 	parts := []string{}
 
-	for end < len(lines) && strings.TrimSpace(lines[end]) != "" && !isBlockStart(lines[end]) {
+	for end < len(lines) && strings.TrimSpace(lines[end]) != "" && (end == start || !isBlockStart(lines[end])) {
 		parts = append(parts, strings.TrimSpace(lines[end]))
 		end++
 	}
@@ -102,7 +115,7 @@ func (r Renderer) paragraph(lines []string, start int) (string, int) {
 }
 
 func isBlockStart(line string) bool {
-	return strings.HasPrefix(line, "#") || strings.HasPrefix(line, "```") || strings.HasPrefix(line, "|") ||
+	return headingLevel(line) > 0 || strings.HasPrefix(line, "```") || strings.HasPrefix(line, "|") ||
 		strings.HasPrefix(line, "- ") || orderedItem.MatchString(line)
 }
 

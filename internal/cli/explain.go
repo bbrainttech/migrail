@@ -48,7 +48,7 @@ func newExplainCommand(ui *uiFlags) *cobra.Command {
 			}
 
 			usePager := d.caps.TTY && !noPager && d.caps.Height > 0 && strings.Count(rendered.String(), "\n") > d.caps.Height
-			if usePager && runPager(cmd.Context(), rendered.String(), cmd.OutOrStdout()) == nil {
+			if usePager && startPager(cmd.Context(), rendered.String(), cmd.OutOrStdout()) {
 				return nil
 			}
 
@@ -121,7 +121,7 @@ func levenshtein(a, b string) int {
 	return previous[len(b)]
 }
 
-func runPager(ctx context.Context, text string, out io.Writer) error {
+func startPager(ctx context.Context, text string, out io.Writer) bool {
 	command := strings.Fields(os.Getenv("PAGER"))
 	if len(command) == 0 {
 		command = []string{"less", "-FRX"}
@@ -132,9 +132,11 @@ func runPager(ctx context.Context, text string, out io.Writer) error {
 	pager.Stdout = out
 	pager.Stderr = os.Stderr
 
-	if err := pager.Run(); err != nil {
-		return fmt.Errorf("run pager %s: %w", command[0], err)
+	if err := pager.Start(); err != nil {
+		return false
 	}
 
-	return nil
+	_ = pager.Wait()
+
+	return true
 }

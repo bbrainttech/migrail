@@ -4,3 +4,4 @@
 [31m✖[m [1mMR302[m db/migrations/20260917102000_rename_user_email.sql:1  Renaming column [34m"users.email"[m breaks running code
 [31m✖[m [1mMR101[m db/migrations/20260917102100_index_user_email.sql:1  Index creation blocks writes on [34m"users"[m
 [31m4 errors[m[90m · [m[33m1 warning[m[90m · [m[90m118ms[m
+[1;31mFailing:[m 4 findings at or above "error"

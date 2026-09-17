@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	pg "github.com/bbrainttech/migrail/internal/dialect/postgres"
 	"github.com/bbrainttech/migrail/internal/golden"
@@ -38,6 +39,26 @@ func TestExplainGolden(t *testing.T) {
 				golden.Assert(t, filepath.Join("../../../testdata/golden/explain/MR101", golden.Name(profile, width)), got)
 			})
 		}
+	}
+}
+
+func TestRenderTerminatesOnUnusualLines(t *testing.T) {
+	t.Parallel()
+
+	source := "### Third level\n#tag and text\n#\n| not a table\n- \n1."
+
+	done := make(chan string, 1)
+	go func() { done <- Renderer{Theme: theme.New(0, true, false), Width: 60}.Render(source) }()
+
+	select {
+	case got := <-done:
+		for _, want := range []string{"Third level", "#tag and text"} {
+			if !strings.Contains(got, want) {
+				t.Errorf("output is missing %q:\n%s", want, got)
+			}
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("Render did not finish")
 	}
 }
 

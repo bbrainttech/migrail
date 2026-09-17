@@ -88,7 +88,7 @@ func runCheck(ctx context.Context, cmd *cobra.Command, args []string, opts check
 
 	settings := opts.ui.settings(ciEnabled(opts.ci))
 	stderr := newDisplay(cmd.ErrOrStderr(), settings)
-	phases := progress.New(stderr.out, stderr.theme, progress.Options{
+	phases := progress.New(stderr.out, cmd.ErrOrStderr(), stderr.theme, progress.Options{
 		Animate: stderr.caps.TTY && !settings.CI && !opts.quiet,
 		Verbose: opts.verbose,
 	})
