@@ -108,4 +108,5 @@ Update the README in the same change whenever a user-visible feature ships or ch
 2. Implement in small vertical slices. Each slice builds, passes tests and lint.
 3. For terminal output, run the binary and look at the result at 60, 80 and 120 columns before updating goldens.
 4. Run `/code-review` at the end of a milestone.
-5. Commit only when asked.
+5. Commit and push after finishing each fix, feature or user request, once `make lint test` passes. Use small focused commits with a `scope: summary` message, and push to the current branch. Never commit secrets or `.env*` files other than `.env.example`.
+6. When a milestone's "Done when" criteria are met, tick its box in the README roadmap in the same commit.
