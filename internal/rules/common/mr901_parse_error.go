@@ -11,7 +11,7 @@ import (
 var mr901Docs string
 
 func Rules() []analyze.Rule {
-	return []analyze.Rule{parseError{}}
+	return []analyze.Rule{editedAppliedMigration{}, parseError{}}
 }
 
 type parseError struct{}

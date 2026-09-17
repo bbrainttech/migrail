@@ -13,6 +13,7 @@
   [1;38;2;230;230;234mMR302[m  [38;2;230;230;234mrename-column                 [m  [38;2;255;107;129merror   [m  [38;2;230;230;234mcompatibility[m  [38;2;230;230;234mall[m
   [1;38;2;230;230;234mMR303[m  [38;2;230;230;234mrename-table                  [m  [38;2;255;107;129merror   [m  [38;2;230;230;234mcompatibility[m  [38;2;230;230;234mall[m
   [38;2;139;141;152mMR304  drop-table-in-use               off       compatibility  all[m
+  [1;38;2;230;230;234mMR401[m  [38;2;230;230;234medited-applied-migration      [m  [38;2;245;185;92mwarning [m  [38;2;230;230;234mtransaction  [m  [38;2;230;230;234mall[m
   [1;38;2;230;230;234mMR402[m  [38;2;230;230;234mconcurrent-in-transaction     [m  [38;2;255;107;129merror   [m  [38;2;230;230;234mtransaction  [m  [38;2;230;230;234mall[m
   [1;38;2;230;230;234mMR403[m  [38;2;230;230;234mmissing-lock-timeout          [m  [38;2;245;185;92mwarning [m  [38;2;230;230;234mtransaction  [m  [38;2;230;230;234mall[m
   [1;38;2;230;230;234mMR404[m  [38;2;230;230;234mnot-valid-validate-same-tx    [m  [38;2;255;107;129merror   [m  [38;2;230;230;234mtransaction  [m  [38;2;230;230;234mall[m
@@ -21,4 +22,4 @@
   [1;38;2;230;230;234mMR503[m  [38;2;230;230;234mdelete-or-update-without-where[m  [38;2;255;107;129merror   [m  [38;2;230;230;234mdata         [m  [38;2;230;230;234mall[m
   [1;38;2;230;230;234mMR901[m  [38;2;230;230;234mparse-error                   [m  [38;2;255;107;129merror   [m  [38;2;230;230;234mdiagnostic   [m  [38;2;230;230;234mall[m
   [1;38;2;230;230;234mMR903[m  [38;2;230;230;234mdynamic-sql                   [m  [38;2;108;196;255mnotice  [m  [38;2;230;230;234mdiagnostic   [m  [38;2;230;230;234mall[m
-  [38;2;139;141;152m22 rules · 21 enabled · run [m[38;2;230;230;234mmigrail explain <ID>[m
+  [38;2;139;141;152m23 rules · 22 enabled · run [m[38;2;230;230;234mmigrail explain <ID>[m

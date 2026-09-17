@@ -17,12 +17,15 @@ type Input struct {
 	DBVersion   ir.Version
 	Migrations  []*ir.Migration
 	Result      analyze.Result
+	Base        string
+	ChangedOnly bool
 }
 
 type report struct {
 	Schema     int         `json:"schema"`
 	Tool       tool        `json:"tool"`
 	Database   database    `json:"database"`
+	Scope      scope       `json:"scope"`
 	Summary    summary     `json:"summary"`
 	Migrations []migration `json:"migrations"`
 	Findings   []finding   `json:"findings"`
@@ -39,6 +42,11 @@ type database struct {
 	Version string     `json:"version"`
 }
 
+type scope struct {
+	Base        string `json:"base,omitempty"`
+	ChangedOnly bool   `json:"changedOnly"`
+}
+
 type summary struct {
 	Migrations int `json:"migrations"`
 	Statements int `json:"statements"`
@@ -48,11 +56,12 @@ type summary struct {
 }
 
 type migration struct {
-	ID         string    `json:"id"`
-	Path       string    `json:"path"`
-	Framework  string    `json:"framework"`
-	TxMode     ir.TxMode `json:"txMode"`
-	Statements int       `json:"statements"`
+	ID          string         `json:"id"`
+	Path        string         `json:"path"`
+	ChangeState ir.ChangeState `json:"changeState"`
+	Framework   string         `json:"framework"`
+	TxMode      ir.TxMode      `json:"txMode"`
+	Statements  int            `json:"statements"`
 }
 
 type finding struct {
@@ -132,6 +141,7 @@ func build(in Input) report {
 		Schema:     SchemaVersion,
 		Tool:       tool{Name: "migrail", Version: in.ToolVersion},
 		Database:   database{Dialect: in.Dialect, Version: in.DBVersion.String()},
+		Scope:      scope{Base: in.Base, ChangedOnly: in.ChangedOnly},
 		Migrations: make([]migration, 0, len(in.Migrations)),
 		Findings:   make([]finding, 0, len(in.Result.Findings)),
 		RuleErrors: make([]ruleError, 0, len(in.Result.RuleErrors)),
@@ -140,11 +150,12 @@ func build(in Input) report {
 
 	for _, m := range in.Migrations {
 		out.Migrations = append(out.Migrations, migration{
-			ID:         m.ID,
-			Path:       m.SourcePath,
-			Framework:  m.Framework,
-			TxMode:     m.TxMode,
-			Statements: len(m.Statements),
+			ID:          m.ID,
+			Path:        m.SourcePath,
+			ChangeState: m.ChangeState,
+			Framework:   m.Framework,
+			TxMode:      m.TxMode,
+			Statements:  len(m.Statements),
 		})
 	}
 

@@ -16,6 +16,10 @@ type Rule interface {
 	Check(c *Context, stmt *ir.Statement) []ir.Finding
 }
 
+type MigrationRule interface {
+	CheckMigration(c *Context, migration *ir.Migration) []ir.Finding
+}
+
 type Dialect interface {
 	Name() ir.Dialect
 	Fingerprint(stmt *ir.Statement) string
@@ -70,6 +74,24 @@ func checkMigration(dialect Dialect, migration *ir.Migration, rules []Rule, opts
 		state:     state,
 	}
 
+	for _, rule := range rules {
+		migrationRule, ok := rule.(MigrationRule)
+		if !ok {
+			continue
+		}
+
+		findings, err := safeRun(rule, func() []ir.Finding { return migrationRule.CheckMigration(analysisContext, migration) })
+		if err != nil {
+			result.RuleErrors = append(result.RuleErrors, RuleError{RuleID: rule.Meta().ID, MigrationID: migration.ID, Statement: -1, Message: err.Error()})
+
+			continue
+		}
+
+		for _, finding := range findings {
+			result.Findings = append(result.Findings, complete(dialect, rule.Meta(), migration, nil, finding))
+		}
+	}
+
 	for _, stmt := range migration.Statements {
 		stmt.InTx = state.inTransaction(migration)
 		result.Statements++
@@ -96,14 +118,18 @@ func checkMigration(dialect Dialect, migration *ir.Migration, rules []Rule, opts
 	}
 }
 
-func safeCheck(rule Rule, c *Context, stmt *ir.Statement) (findings []ir.Finding, err error) {
+func safeCheck(rule Rule, c *Context, stmt *ir.Statement) ([]ir.Finding, error) {
+	return safeRun(rule, func() []ir.Finding { return rule.Check(c, stmt) })
+}
+
+func safeRun(rule Rule, check func() []ir.Finding) (findings []ir.Finding, err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			err = fmt.Errorf("rule %s panicked: %v", rule.Meta().ID, recovered)
 		}
 	}()
 
-	return rule.Check(c, stmt), nil
+	return check(), nil
 }
 
 func ActiveRules(rules []Rule, dialect ir.Dialect, opts Options) []Rule {
@@ -157,13 +183,23 @@ func complete(dialect Dialect, meta ir.RuleMeta, migration *ir.Migration, stmt *
 		finding.Confidence = ir.ConfidenceDefinite
 	}
 
+	statementFingerprint := ""
+
+	if stmt != nil {
+		statementFingerprint = dialect.Fingerprint(stmt)
+
+		if finding.Location.Span == (ir.Span{}) {
+			finding.Location.Span = stmt.Span
+		}
+	}
+
 	if finding.Location.Span == (ir.Span{}) {
-		finding.Location.Span = stmt.Span
+		finding.Location.Span = ir.Span{Start: ir.Position{Line: 1, Column: 1}, End: ir.Position{Line: 1, Column: 1}}
 	}
 
 	finding.Location.Path = migration.SourcePath
 
-	sum := sha256.Sum256([]byte(meta.ID + "\x00" + migration.ID + "\x00" + dialect.Fingerprint(stmt)))
+	sum := sha256.Sum256([]byte(meta.ID + "\x00" + migration.ID + "\x00" + statementFingerprint))
 	finding.Fingerprint = hex.EncodeToString(sum[:])
 
 	return finding
@@ -174,11 +210,16 @@ func dedupe(findings []ir.Finding) []ir.Finding {
 	unique := make([]ir.Finding, 0, len(findings))
 
 	for _, finding := range findings {
+		statementIndex := -1
+		if finding.Statement != nil {
+			statementIndex = finding.Statement.Index
+		}
+
 		key := fmt.Sprintf(
 			"%s|%s|%d|%d|%s",
 			finding.RuleID,
 			finding.MigrationID,
-			finding.Statement.Index,
+			statementIndex,
 			finding.Location.Span.Start.Offset,
 			finding.Title,
 		)

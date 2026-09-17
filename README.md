@@ -91,6 +91,8 @@ From anywhere in your repository, find the migrations, detect the migration tool
 ./bin/migrail check --db-version 16
 ```
 
+By default, migrail only checks migrations that are new or changed compared with the base branch, including uncommitted and untracked files. The base branch comes from `--base`, then `GITHUB_BASE_REF` or `CI_MERGE_REQUEST_TARGET_BRANCH_NAME` in CI, then `origin/HEAD`, `main` or `master`. Editing a migration that is already on the base branch is reported as MR401. Use `--all` to check every migration.
+
 Check specific files or directories:
 
 ```
@@ -121,6 +123,8 @@ Learn what a rule detects and how to fix it, or list every rule:
 | `--skip-rule` | Skip these rules, by ID or slug. |
 | `-f`, `--format` | `pretty` (default) or `json`. |
 | `-d`, `--dir` | Project root to search for migrations. Defaults to the repository root. |
+| `--all` | Check every migration, not only the ones changed since the base branch. |
+| `--base` | Git branch or commit to compare against. |
 | `--framework` | Use this migration tool instead of detecting it: `goose`, `golang-migrate`, `atlas`, `flyway`, `prisma`, `drizzle`, `dbmate`, `sqitch` or `sql`. |
 | `--compact` | One line per finding. |
 | `-q`, `--quiet` | Only findings and the summary. |
@@ -158,6 +162,7 @@ Shell completion: `migrail completion bash|zsh|fish|powershell`.
 | MR302 | `rename-column`: renaming a column breaks code that still uses the old name | error |
 | MR303 | `rename-table`: renaming a table breaks code that still uses the old name | error |
 | MR304 | `drop-table-in-use`: dropping a table breaks code that still uses it (off until code scanning) | warning |
+| MR401 | `edited-applied-migration`: a migration already on the base branch was edited | warning |
 | MR402 | `concurrent-in-transaction`: `CONCURRENTLY` fails inside a transaction | error |
 | MR403 | `missing-lock-timeout`: locking DDL without `lock_timeout` can queue every query behind it | warning |
 | MR404 | `not-valid-validate-same-tx`: validating in the same transaction as `NOT VALID` keeps the lock | error |

@@ -7,6 +7,10 @@
     migrail check [path]... | - [flags]
 
   Flags
+        --all                 check every migration, not only the ones changed since the
+                              base branch
+        --base string         git branch or commit to compare against (default: origin/HEAD,
+                              main or master)
         --ci                  CI mode: no color, links or spinners unless forced
         --compact             print one line per finding
         --db-version string   PostgreSQL major version in production, such as 16 (default: 12)

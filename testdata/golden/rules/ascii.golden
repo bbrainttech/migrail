@@ -13,6 +13,7 @@
   MR302  rename-column                   error     compatibility  all
   MR303  rename-table                    error     compatibility  all
   MR304  drop-table-in-use               off       compatibility  all
+  MR401  edited-applied-migration        warning   transaction    all
   MR402  concurrent-in-transaction       error     transaction    all
   MR403  missing-lock-timeout            warning   transaction    all
   MR404  not-valid-validate-same-tx      error     transaction    all
@@ -21,4 +22,4 @@
   MR503  delete-or-update-without-where  error     data           all
   MR901  parse-error                     error     diagnostic     all
   MR903  dynamic-sql                     notice    diagnostic     all
-  22 rules - 21 enabled - run migrail explain <ID>
+  23 rules - 22 enabled - run migrail explain <ID>

@@ -10,6 +10,14 @@
     migrail check [path]... | - [flags]
 
   [1;34mFlags[m
+        [1m--all[m                 check every migration,
+                              not only the ones
+                              changed since the base
+                              branch
+        [1m--base string[m         git branch or commit
+                              to compare against
+                              (default: origin/HEAD,
+                              main or master)
         [1m--ci[m                  CI mode: no color,
                               links or spinners
                               unless forced

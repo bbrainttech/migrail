@@ -8,6 +8,9 @@
     "dialect": "postgres",
     "version": "16"
   },
+  "scope": {
+    "changedOnly": false
+  },
   "summary": {
     "migrations": 5,
     "statements": 9,
@@ -19,6 +22,7 @@
     {
       "id": "sql:../../testdata/sql/MR104/bad/inline_column_reference.sql",
       "path": "../../testdata/sql/MR104/bad/inline_column_reference.sql",
+      "changeState": "new",
       "framework": "sql",
       "txMode": "non_transactional",
       "statements": 1
@@ -26,6 +30,7 @@
     {
       "id": "sql:../../testdata/sql/MR107/bad/basic.sql",
       "path": "../../testdata/sql/MR107/bad/basic.sql",
+      "changeState": "new",
       "framework": "sql",
       "txMode": "non_transactional",
       "statements": 1
@@ -33,6 +38,7 @@
     {
       "id": "sql:../../testdata/sql/MR201/bad/two_columns.sql",
       "path": "../../testdata/sql/MR201/bad/two_columns.sql",
+      "changeState": "new",
       "framework": "sql",
       "txMode": "non_transactional",
       "statements": 1
@@ -40,6 +46,7 @@
     {
       "id": "sql:../../testdata/sql/MR302/bad/in_transaction.sql",
       "path": "../../testdata/sql/MR302/bad/in_transaction.sql",
+      "changeState": "new",
       "framework": "sql",
       "txMode": "non_transactional",
       "statements": 4
@@ -47,6 +54,7 @@
     {
       "id": "sql:../../testdata/sql/MR901/bad/misspelled_keyword.sql",
       "path": "../../testdata/sql/MR901/bad/misspelled_keyword.sql",
+      "changeState": "new",
       "framework": "sql",
       "txMode": "non_transactional",
       "statements": 2

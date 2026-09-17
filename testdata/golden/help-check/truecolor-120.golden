@@ -7,6 +7,10 @@
     [38;2;230;230;234mmigrail check [path]... | - [flags][m
 
   [1;38;2;124;140;255mFlags[m
+        [1;38;2;230;230;234m--all[m                 [38;2;230;230;234mcheck every migration, not only the ones changed since the[m
+  [38;2;230;230;234m                            base branch[m
+        [1;38;2;230;230;234m--base string[m         [38;2;230;230;234mgit branch or commit to compare against (default: origin/HEAD,[m
+  [38;2;230;230;234m                            main or master)[m
         [1;38;2;230;230;234m--ci[m                  [38;2;230;230;234mCI mode: no color, links or spinners unless forced[m
         [1;38;2;230;230;234m--compact[m             [38;2;230;230;234mprint one line per finding[m
         [1;38;2;230;230;234m--db-version string[m   [38;2;230;230;234mPostgreSQL major version in production, such as 16 (default: 12)[m

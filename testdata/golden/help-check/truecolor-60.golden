@@ -10,6 +10,14 @@
     [38;2;230;230;234mmigrail check [path]... | - [flags][m
 
   [1;38;2;124;140;255mFlags[m
+        [1;38;2;230;230;234m--all[m                 [38;2;230;230;234mcheck every migration,[m
+  [38;2;230;230;234m                            not only the ones[m
+  [38;2;230;230;234m                            changed since the base[m
+  [38;2;230;230;234m                            branch[m
+        [1;38;2;230;230;234m--base string[m         [38;2;230;230;234mgit branch or commit[m
+  [38;2;230;230;234m                            to compare against[m
+  [38;2;230;230;234m                            (default: origin/HEAD,[m
+  [38;2;230;230;234m                            main or master)[m
         [1;38;2;230;230;234m--ci[m                  [38;2;230;230;234mCI mode: no color,[m
   [38;2;230;230;234m                            links or spinners[m
   [38;2;230;230;234m                            unless forced[m

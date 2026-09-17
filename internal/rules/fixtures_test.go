@@ -18,6 +18,7 @@ import (
 const (
 	fixturesRoot      = "../../testdata/sql"
 	minFixturesPerSet = 5
+	modifiedDirective = "-- migrail-test: modified"
 )
 
 type expectedFinding struct {
@@ -118,11 +119,16 @@ func runFixture(t *testing.T, id, file string) []ir.Finding {
 	}
 
 	migration := &ir.Migration{
-		ID:         "sql:" + file,
-		SourcePath: file,
-		Source:     string(source),
-		TxMode:     ir.TxModeNonTransactional,
-		Statements: statements,
+		ID:          "sql:" + file,
+		SourcePath:  file,
+		Source:      string(source),
+		TxMode:      ir.TxModeNonTransactional,
+		Statements:  statements,
+		ChangeState: ir.ChangeStateNew,
+	}
+
+	if strings.HasPrefix(string(source), modifiedDirective) {
+		migration.ChangeState = ir.ChangeStateModified
 	}
 
 	result, err := analyze.Run(context.Background(), dialect, []*ir.Migration{migration}, All(), analyze.Options{

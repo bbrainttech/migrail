@@ -3,6 +3,7 @@ package pretty
 import (
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 	"time"
 
@@ -23,6 +24,8 @@ type Input struct {
 	FailOn      string
 	Elapsed     time.Duration
 	Highlight   func(source string) []ir.Token
+	Base        string
+	ChangedOnly bool
 }
 
 type Options struct {
@@ -66,6 +69,11 @@ func Render(in Input, opts Options) string {
 func (r renderer) clean() string {
 	t := r.t
 	count := len(r.in.Migrations)
+
+	if count == 0 && r.in.ChangedOnly {
+		return t.Success.Render(t.Symbols.Success) + " " +
+			t.Fg.Render("no changed migrations since "+r.in.Base) + r.dot() + t.Muted.Render(formatDuration(r.in.Elapsed))
+	}
 
 	return t.Success.Render(t.Symbols.Success) + " " +
 		t.Fg.Render(fmt.Sprintf("%d %s checked", count, components.Plural(count, "migration", "migrations"))) +
@@ -150,10 +158,33 @@ func (r renderer) findingsFor(migration *ir.Migration) []ir.Finding {
 func (r renderer) header() string {
 	t := r.t
 	files := len(r.in.Migrations)
+	parts := []string{fmt.Sprintf("%s %s", r.in.Dialect, r.in.DBVersion)}
 
-	return t.Muted.Render("migrail ") + t.Accent.Render(r.in.ToolVersion) +
-		t.Muted.Render(fmt.Sprintf(" %s %s %s %s %d %s",
-			t.Symbols.Dot, r.in.Dialect, r.in.DBVersion, t.Symbols.Dot, files, components.Plural(files, "file", "files")))
+	if frameworks := r.frameworks(); frameworks != "" {
+		parts = append(parts, frameworks)
+	}
+
+	if r.in.ChangedOnly {
+		parts = append(parts, fmt.Sprintf("%d changed %s vs %s", files, components.Plural(files, "migration", "migrations"), r.in.Base))
+	} else {
+		parts = append(parts, fmt.Sprintf("%d %s", files, components.Plural(files, "file", "files")))
+	}
+
+	separator := " " + t.Symbols.Dot + " "
+
+	return t.Muted.Render("migrail ") + t.Accent.Render(r.in.ToolVersion) + t.Muted.Render(separator+strings.Join(parts, separator))
+}
+
+func (r renderer) frameworks() string {
+	seen := []string{}
+
+	for _, migration := range r.in.Migrations {
+		if migration.Framework != "" && migration.Framework != "sql" && !slices.Contains(seen, migration.Framework) {
+			seen = append(seen, migration.Framework)
+		}
+	}
+
+	return strings.Join(seen, ", ")
 }
 
 func (r renderer) fileHeader(migration *ir.Migration) string {

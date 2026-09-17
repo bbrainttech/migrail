@@ -1,0 +1,42 @@
+{
+  "bad/alter.sql": [
+    {
+      "line": 1,
+      "column": 1,
+      "severity": "warning",
+      "confidence": "definite"
+    }
+  ],
+  "bad/comment_only.sql": [
+    {
+      "line": 1,
+      "column": 1,
+      "severity": "warning",
+      "confidence": "definite"
+    }
+  ],
+  "bad/create_table.sql": [
+    {
+      "line": 1,
+      "column": 1,
+      "severity": "warning",
+      "confidence": "definite"
+    }
+  ],
+  "bad/empty_after_directive.sql": [
+    {
+      "line": 1,
+      "column": 1,
+      "severity": "warning",
+      "confidence": "definite"
+    }
+  ],
+  "bad/multiple_statements.sql": [
+    {
+      "line": 1,
+      "column": 1,
+      "severity": "warning",
+      "confidence": "definite"
+    }
+  ]
+}

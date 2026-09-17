@@ -43,6 +43,8 @@ type checkOptions struct {
 	skipRules []string
 	framework string
 	dir       string
+	base      string
+	all       bool
 	compact   bool
 	quiet     bool
 	verbose   bool
@@ -72,6 +74,8 @@ func newCheckCommand(ui *uiFlags) *cobra.Command {
 	flags.StringSliceVar(&opts.skipRules, "skip-rule", nil, "skip these rules, by ID or slug")
 	flags.StringVar(&opts.framework, "framework", "", "migration tool to use instead of detecting it: "+strings.Join(discovery.AdapterNames(), ", "))
 	flags.StringVarP(&opts.dir, "dir", "d", "", "project root to search for migrations (default: the repository root)")
+	flags.BoolVar(&opts.all, "all", false, "check every migration, not only the ones changed since the base branch")
+	flags.StringVar(&opts.base, "base", "", "git branch or commit to compare against (default: origin/HEAD, main or master)")
 	flags.BoolVar(&opts.compact, "compact", false, "print one line per finding")
 	flags.BoolVarP(&opts.quiet, "quiet", "q", false, "print only findings and the summary")
 	flags.BoolVarP(&opts.verbose, "verbose", "v", false, "print each phase with its timing")
@@ -98,14 +102,14 @@ func runCheck(ctx context.Context, cmd *cobra.Command, args []string, opts check
 
 	finish := phases.Start("Discovering", fmt.Sprintf("%d %s", len(args), components.Plural(len(args), "file", "files")))
 
-	migrations, err := loadMigrations(ctx, dialect, args, opts, cmd.InOrStdin())
+	migrations, scope, err := collectMigrations(ctx, cmd, dialect, args, opts, stderr)
 	if err != nil {
 		finish.Abort()
 
 		return err
 	}
 
-	finish.Done("Discovered", fmt.Sprintf("%d %s %s sql", len(migrations), components.Plural(len(migrations), "migration", "migrations"), stderr.theme.Symbols.Dot))
+	finish.Done("Discovered", fmt.Sprintf("%d %s", len(migrations), components.Plural(len(migrations), "migration", "migrations")))
 
 	if opts.dbVersion == "" && !opts.quiet {
 		writeNotice(stderr, fmt.Sprintf("assuming PostgreSQL %s. Set --db-version for advice that matches your version.", dbVersion))
@@ -130,11 +134,38 @@ func runCheck(ctx context.Context, cmd *cobra.Command, args []string, opts check
 
 	finish.Done("Analyzed", fmt.Sprintf("%d %s %s %d rules", result.Statements, components.Plural(result.Statements, "statement", "statements"), stderr.theme.Symbols.Dot, result.RulesRun))
 
-	if err := writeCheckReport(cmd, opts, settings, dialect, dbVersion, migrations, result, time.Since(started)); err != nil {
+	if err := writeCheckReport(cmd, opts, settings, dialect, dbVersion, migrations, scope, result, time.Since(started)); err != nil {
 		return internalError(err)
 	}
 
 	return checkOutcome(result, opts.failOn, opts.format == formatPretty)
+}
+
+func collectMigrations(
+	ctx context.Context,
+	cmd *cobra.Command,
+	dialect *pg.Dialect,
+	args []string,
+	opts checkOptions,
+	stderr display,
+) ([]*ir.Migration, changeScope, error) {
+	migrations, err := loadMigrations(ctx, dialect, args, opts, cmd.InOrStdin())
+	if err != nil {
+		return nil, changeScope{}, err
+	}
+
+	explicitPaths := len(args) > 0
+	if explicitPaths && !opts.all {
+		return migrations, changeScope{}, nil
+	}
+
+	notice := func(message string) {
+		if !opts.quiet {
+			writeNotice(stderr, message)
+		}
+	}
+
+	return applyGitScope(ctx, migrations, explicitPaths, opts, notice)
 }
 
 func writeCheckReport(
@@ -144,6 +175,7 @@ func writeCheckReport(
 	dialect *pg.Dialect,
 	dbVersion ir.Version,
 	migrations []*ir.Migration,
+	scope changeScope,
 	result analyze.Result,
 	elapsed time.Duration,
 ) error {
@@ -154,6 +186,8 @@ func writeCheckReport(
 			DBVersion:   dbVersion,
 			Migrations:  migrations,
 			Result:      result,
+			Base:        scope.Base,
+			ChangedOnly: scope.ChangedOnly,
 		})
 	}
 
@@ -177,6 +211,8 @@ func writeCheckReport(
 		FailOn:      opts.failOn,
 		Elapsed:     elapsed,
 		Highlight:   dialect.Highlight,
+		Base:        scope.Base,
+		ChangedOnly: scope.ChangedOnly,
 	}, options)
 }
 
