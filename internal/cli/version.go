@@ -44,16 +44,19 @@ func newVersionCommand() *cobra.Command {
 		Short: "Print the migrail version and build details",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			debugInfo, _ := debug.ReadBuildInfo()
-			info := resolveBuildInfo(linkedValues{Version: version, Commit: commit, Date: date}, debugInfo)
-
-			if err := info.write(cmd.OutOrStdout()); err != nil {
+			if err := currentBuildInfo().write(cmd.OutOrStdout()); err != nil {
 				return internalError(fmt.Errorf("write version: %w", err))
 			}
 
 			return nil
 		},
 	}
+}
+
+func currentBuildInfo() buildInfo {
+	debugInfo, _ := debug.ReadBuildInfo()
+
+	return resolveBuildInfo(linkedValues{Version: version, Commit: commit, Date: date}, debugInfo)
 }
 
 func resolveBuildInfo(linked linkedValues, debugInfo *debug.BuildInfo) buildInfo {

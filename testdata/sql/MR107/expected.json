@@ -1,0 +1,7 @@
+{
+  "bad/basic.sql": [{"line": 1, "column": 1, "severity": "error", "confidence": "definite"}],
+  "bad/check_not_validated.sql": [{"line": 2, "column": 1, "severity": "error", "confidence": "definite"}],
+  "bad/check_on_other_column.sql": [{"line": 2, "column": 1, "severity": "error", "confidence": "definite"}],
+  "bad/check_on_other_table.sql": [{"line": 2, "column": 1, "severity": "error", "confidence": "definite"}],
+  "bad/two_columns.sql": [{"line": 1, "column": 1, "severity": "error", "confidence": "definite"}, {"line": 1, "column": 1, "severity": "error", "confidence": "definite"}]
+}

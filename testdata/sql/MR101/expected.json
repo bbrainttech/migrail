@@ -1,0 +1,8 @@
+{
+  "bad/basic.sql": [{"line": 1, "column": 1, "severity": "error", "confidence": "definite"}],
+  "bad/in_transaction.sql": [{"line": 2, "column": 1, "severity": "error", "confidence": "definite"}],
+  "bad/multiline_partial.sql": [{"line": 1, "column": 1, "severity": "error", "confidence": "definite"}],
+  "bad/other_table_created.sql": [{"line": 2, "column": 1, "severity": "error", "confidence": "definite"}],
+  "bad/schema_qualified_if_not_exists.sql": [{"line": 1, "column": 1, "severity": "error", "confidence": "definite"}],
+  "bad/unique_after_comment.sql": [{"line": 2, "column": 1, "severity": "error", "confidence": "definite"}]
+}

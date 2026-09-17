@@ -1464,6 +1464,12 @@ Durations are **focused working days** (a day = one solid Claude Code session wi
 - Rule registry + first 5 rules (MR101, MR104, MR107, MR201, MR302) with fixtures.
 - JSON output.
 - **Done when:** `migrail check file.sql -f json` produces correct findings for all fixtures.
+- Implementation notes (2026-09-17):
+  - The `Dialect` interface is defined where it's consumed (`internal/analyze`), not in `internal/dialect/dialect.go`, following CLAUDE.md. It grows as later consumers need more methods.
+  - `check` defaults to `-f json` until M2 ships the pretty renderer, then the default switches to `pretty`.
+  - Standalone `.sql` files passed to `check` are treated as non-transactional (how `psql -f` runs them). Adapters set the real transaction mode in M3.
+  - MR201 can't see the current column type from migrations alone. When the new type allows a catalog-only change (`text`, `varchar`, `numeric`, `inet`, `timestamptz`, `citext`, `varbit`) and there's no computing `USING`, it reports a warning with `possible` confidence instead of an error.
+  - `lockmodel` rows come from the PostgreSQL documentation. `make lockverify` arrives with the harness in M3 and must confirm them.
 
 ### M2: Beautiful CLI (days 4–5)
 - Theme tokens, components (code frame, tree labels, summary bar, spinner), pretty & compact renderers.

@@ -1,0 +1,81 @@
+{
+  "schema": 1,
+  "tool": {
+    "name": "migrail",
+    "version": "dev"
+  },
+  "database": {
+    "dialect": "postgres",
+    "version": "16"
+  },
+  "summary": {
+    "migrations": 1,
+    "statements": 1,
+    "errors": 1,
+    "warnings": 0,
+    "notices": 0
+  },
+  "migrations": [
+    {
+      "id": "sql:../../testdata/sql/MR101/bad/basic.sql",
+      "path": "../../testdata/sql/MR101/bad/basic.sql",
+      "framework": "sql",
+      "txMode": "non_transactional",
+      "statements": 1
+    }
+  ],
+  "findings": [
+    {
+      "ruleId": "MR101",
+      "slug": "create-index-non-concurrent",
+      "severity": "error",
+      "confidence": "definite",
+      "title": "Index creation blocks writes on \"orders\"",
+      "why": "Postgres holds this lock until the whole index is built. INSERT, UPDATE and DELETE on the table wait for the entire build.",
+      "location": {
+        "path": "../../testdata/sql/MR101/bad/basic.sql",
+        "start": {
+          "line": 1,
+          "column": 1,
+          "offset": 0
+        },
+        "end": {
+          "line": 1,
+          "column": 50,
+          "offset": 49
+        }
+      },
+      "statement": {
+        "index": 0,
+        "sql": "CREATE INDEX idx_orders_status ON orders (status)",
+        "inTransaction": false
+      },
+      "lock": {
+        "mode": "SHARE",
+        "tables": [
+          "orders"
+        ],
+        "blocks": [
+          "INSERT",
+          "UPDATE",
+          "DELETE"
+        ],
+        "rewrite": false,
+        "scan": true
+      },
+      "fix": {
+        "summary": "Build the index concurrently, outside a transaction:",
+        "framework": "sql",
+        "steps": [
+          {
+            "lang": "sql",
+            "code": "CREATE INDEX CONCURRENTLY idx_orders_status ON orders (status);"
+          }
+        ]
+      },
+      "migrationId": "sql:../../testdata/sql/MR101/bad/basic.sql",
+      "fingerprint": "259e7a9b78aa2b606f19d6e8ba7419f0b86d3ce39c7288798abe5889d51de550"
+    }
+  ],
+  "ruleErrors": []
+}

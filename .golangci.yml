@@ -108,6 +108,10 @@ linters:
       - path: _test\.go
         linters:
           - goconst
+      - path: _test\.go
+        linters:
+          - gosec
+        text: G304
     paths:
       - vendor$
       - third_party$
@@ -119,6 +123,8 @@ linters:
       threshold: 100 # lower => stricter (tokens)
     errcheck:
       check-type-assertions: true
+    exhaustive:
+      default-signifies-exhaustive: true
     funlen:
       lines: 120
       statements: 80

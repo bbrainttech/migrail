@@ -6,7 +6,7 @@ migrail reads your migrations the way your database will run them. It tells you 
 
 It's free and open source. You don't need an account or a config file, and it works on the migrations you already have.
 
-> migrail is in early development and has no release yet. The checks below are planned for v0.1. Watch the repository to follow along.
+> migrail is in early development and has no release yet. You can build it from source and check PostgreSQL SQL files today. The rest of this page describes v0.1, which is in progress.
 
 ## What it looks like
 
@@ -73,13 +73,49 @@ To build it from source you need Go 1.26.4 or newer and a C compiler:
 git clone https://github.com/bbrainttech/migrail
 cd migrail
 make build
-./bin/migrail version
 ```
+
+## Usage
+
+Check one or more SQL migration files. Results are JSON for now; the terminal view shown above comes next.
+
+```
+./bin/migrail check db/migrations/20260917101500_add_orders_status.sql --db-version 16
+```
+
+Read SQL from standard input:
+
+```
+echo "ALTER TABLE users RENAME COLUMN email TO email_address;" | ./bin/migrail check -
+```
+
+| Flag | Meaning |
+|---|---|
+| `--db-version` | PostgreSQL major version you run in production, 12 to 18. Defaults to 12. |
+| `--fail-on` | Exit with code 1 on findings at or above `error` (default), `warning` or `notice`. `never` always exits 0. |
+| `-r`, `--rule` | Only run these rules, by ID or slug. |
+| `--skip-rule` | Skip these rules, by ID or slug. |
+| `-f`, `--format` | Output format. Only `json` is available today. |
+
+Exit codes: `0` no failing findings, `1` findings at or above `--fail-on`, `2` usage error, `4` internal error.
+
+### Available rules
+
+| ID | Rule | Severity |
+|---|---|---|
+| MR101 | `create-index-non-concurrent`: `CREATE INDEX` without `CONCURRENTLY` blocks writes | error |
+| MR104 | `add-foreign-key-validating`: a foreign key without `NOT VALID` blocks writes on both tables | error |
+| MR107 | `set-not-null-scan`: `SET NOT NULL` scans the table while blocking all queries | error |
+| MR201 | `alter-column-type-rewrite`: changing a column type rewrites the table | error |
+| MR302 | `rename-column`: renaming a column breaks code that still uses the old name | error |
+| MR901 | `parse-error`: the SQL can't be parsed | error |
+
+Statements on tables created earlier in the same set of files don't trigger lock rules, because those tables are still empty.
 
 ## Roadmap
 
 - [ ] Foundations: project setup, CI, cross-platform builds
-- [ ] Analysis engine: Postgres parser, first rules, JSON output
+- [x] Analysis engine: Postgres parser, first rules, JSON output
 - [ ] Terminal output: colors, code frames, `explain` and `rules`
 - [ ] v0.1: PostgreSQL rules and SQL migration tools
 - [ ] v0.2: framework support, capture mode, CI integrations, package managers

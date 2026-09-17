@@ -1,0 +1,2 @@
+ALTER TABLE orders ADD CONSTRAINT orders_status_not_null CHECK (status IS NOT NULL) NOT VALID;
+ALTER TABLE orders ALTER COLUMN status SET NOT NULL;

@@ -1,0 +1,7 @@
+{
+  "bad/basic.sql": [{"line": 1, "column": 33, "severity": "error", "confidence": "likely"}],
+  "bad/in_transaction.sql": [{"line": 3, "column": 35, "severity": "error", "confidence": "likely"}],
+  "bad/quoted_identifiers.sql": [{"line": 1, "column": 35, "severity": "error", "confidence": "likely"}],
+  "bad/schema_qualified_if_exists.sql": [{"line": 1, "column": 54, "severity": "error", "confidence": "likely"}],
+  "bad/without_column_keyword.sql": [{"line": 1, "column": 26, "severity": "error", "confidence": "likely"}]
+}

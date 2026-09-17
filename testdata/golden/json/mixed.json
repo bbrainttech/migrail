@@ -1,0 +1,382 @@
+{
+  "schema": 1,
+  "tool": {
+    "name": "migrail",
+    "version": "dev"
+  },
+  "database": {
+    "dialect": "postgres",
+    "version": "16"
+  },
+  "summary": {
+    "migrations": 5,
+    "statements": 9,
+    "errors": 6,
+    "warnings": 0,
+    "notices": 0
+  },
+  "migrations": [
+    {
+      "id": "sql:../../testdata/sql/MR104/bad/inline_column_reference.sql",
+      "path": "../../testdata/sql/MR104/bad/inline_column_reference.sql",
+      "framework": "sql",
+      "txMode": "non_transactional",
+      "statements": 1
+    },
+    {
+      "id": "sql:../../testdata/sql/MR107/bad/basic.sql",
+      "path": "../../testdata/sql/MR107/bad/basic.sql",
+      "framework": "sql",
+      "txMode": "non_transactional",
+      "statements": 1
+    },
+    {
+      "id": "sql:../../testdata/sql/MR201/bad/two_columns.sql",
+      "path": "../../testdata/sql/MR201/bad/two_columns.sql",
+      "framework": "sql",
+      "txMode": "non_transactional",
+      "statements": 1
+    },
+    {
+      "id": "sql:../../testdata/sql/MR302/bad/in_transaction.sql",
+      "path": "../../testdata/sql/MR302/bad/in_transaction.sql",
+      "framework": "sql",
+      "txMode": "non_transactional",
+      "statements": 4
+    },
+    {
+      "id": "sql:../../testdata/sql/MR901/bad/misspelled_keyword.sql",
+      "path": "../../testdata/sql/MR901/bad/misspelled_keyword.sql",
+      "framework": "sql",
+      "txMode": "non_transactional",
+      "statements": 2
+    }
+  ],
+  "findings": [
+    {
+      "ruleId": "MR104",
+      "slug": "add-foreign-key-validating",
+      "severity": "error",
+      "confidence": "definite",
+      "title": "Foreign key blocks writes on \"orders\" and \"users\"",
+      "why": "Postgres checks every existing row of orders against users while it holds locks on both tables. INSERT, UPDATE and DELETE on either table wait until the check finishes.",
+      "location": {
+        "path": "../../testdata/sql/MR104/bad/inline_column_reference.sql",
+        "start": {
+          "line": 1,
+          "column": 1,
+          "offset": 0
+        },
+        "end": {
+          "line": 1,
+          "column": 85,
+          "offset": 84
+        }
+      },
+      "statement": {
+        "index": 0,
+        "sql": "ALTER TABLE orders ADD COLUMN user_id bigint REFERENCES users (id) ON DELETE CASCADE",
+        "inTransaction": false
+      },
+      "lock": {
+        "mode": "SHARE ROW EXCLUSIVE",
+        "tables": [
+          "orders",
+          "users"
+        ],
+        "blocks": [
+          "INSERT",
+          "UPDATE",
+          "DELETE"
+        ],
+        "rewrite": false,
+        "scan": true
+      },
+      "fix": {
+        "summary": "Add the constraint as NOT VALID, then validate it in a separate transaction:",
+        "framework": "sql",
+        "steps": [
+          {
+            "title": "Add the column and the constraint without checking existing rows",
+            "lang": "sql",
+            "code": "ALTER TABLE orders ADD COLUMN user_id bigint;\nALTER TABLE orders ADD CONSTRAINT orders_user_id_fkey FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE NOT VALID;"
+          },
+          {
+            "title": "Validate it in a separate migration",
+            "lang": "sql",
+            "code": "ALTER TABLE orders VALIDATE CONSTRAINT orders_user_id_fkey;"
+          }
+        ]
+      },
+      "migrationId": "sql:../../testdata/sql/MR104/bad/inline_column_reference.sql",
+      "fingerprint": "38fa4c418d475e6106b5904642380d4ca845f85c34c111888906ed9294e91905"
+    },
+    {
+      "ruleId": "MR107",
+      "slug": "set-not-null-scan",
+      "severity": "error",
+      "confidence": "definite",
+      "title": "SET NOT NULL on \"orders.status\" blocks reads and writes during a full table scan",
+      "why": "Postgres scans all of orders to check for NULL values while it holds an ACCESS EXCLUSIVE lock. Every query on the table waits for the scan.",
+      "location": {
+        "path": "../../testdata/sql/MR107/bad/basic.sql",
+        "start": {
+          "line": 1,
+          "column": 1,
+          "offset": 0
+        },
+        "end": {
+          "line": 1,
+          "column": 52,
+          "offset": 51
+        }
+      },
+      "statement": {
+        "index": 0,
+        "sql": "ALTER TABLE orders ALTER COLUMN status SET NOT NULL",
+        "inTransaction": false
+      },
+      "lock": {
+        "mode": "ACCESS EXCLUSIVE",
+        "tables": [
+          "orders"
+        ],
+        "blocks": [
+          "SELECT",
+          "INSERT",
+          "UPDATE",
+          "DELETE"
+        ],
+        "rewrite": false,
+        "scan": true
+      },
+      "fix": {
+        "summary": "Prove the column has no NULL values with a CHECK constraint first, so SET NOT NULL skips the scan:",
+        "framework": "sql",
+        "steps": [
+          {
+            "title": "Add the check without scanning existing rows",
+            "lang": "sql",
+            "code": "ALTER TABLE orders ADD CONSTRAINT orders_status_not_null CHECK (status IS NOT NULL) NOT VALID;"
+          },
+          {
+            "title": "Validate it in a separate migration",
+            "lang": "sql",
+            "code": "ALTER TABLE orders VALIDATE CONSTRAINT orders_status_not_null;"
+          },
+          {
+            "title": "Set NOT NULL, then drop the check",
+            "lang": "sql",
+            "code": "ALTER TABLE orders ALTER COLUMN status SET NOT NULL;\nALTER TABLE orders DROP CONSTRAINT orders_status_not_null;"
+          }
+        ]
+      },
+      "migrationId": "sql:../../testdata/sql/MR107/bad/basic.sql",
+      "fingerprint": "7cdabb3bcc324b4026756ff517fdc0ef3c8e5b6d3e07cc87b02c640a592bbcec"
+    },
+    {
+      "ruleId": "MR201",
+      "slug": "alter-column-type-rewrite",
+      "severity": "error",
+      "confidence": "likely",
+      "title": "Changing the type of \"orders.user_id\" rewrites the table",
+      "why": "Postgres rewrites every row of orders and rebuilds its indexes while it holds an ACCESS EXCLUSIVE lock. Reads and writes wait until the rewrite finishes.",
+      "location": {
+        "path": "../../testdata/sql/MR201/bad/two_columns.sql",
+        "start": {
+          "line": 1,
+          "column": 1,
+          "offset": 0
+        },
+        "end": {
+          "line": 3,
+          "column": 61,
+          "offset": 115
+        }
+      },
+      "statement": {
+        "index": 0,
+        "sql": "ALTER TABLE orders\n  ALTER COLUMN user_id TYPE bigint,\n  ALTER COLUMN external_id TYPE uuid USING external_id::uuid",
+        "inTransaction": false
+      },
+      "lock": {
+        "mode": "ACCESS EXCLUSIVE",
+        "tables": [
+          "orders"
+        ],
+        "blocks": [
+          "SELECT",
+          "INSERT",
+          "UPDATE",
+          "DELETE"
+        ],
+        "rewrite": true,
+        "scan": false
+      },
+      "fix": {
+        "summary": "Change the type with expand and contract instead of rewriting the table in place:",
+        "framework": "sql",
+        "steps": [
+          {
+            "title": "Add user_id_new with the new type",
+            "lang": "sql",
+            "code": "ALTER TABLE orders ADD COLUMN user_id_new bigint;"
+          },
+          {
+            "title": "Write to both columns and backfill user_id_new in batches"
+          },
+          {
+            "title": "Read from user_id_new, then drop user_id and rename user_id_new"
+          }
+        ]
+      },
+      "migrationId": "sql:../../testdata/sql/MR201/bad/two_columns.sql",
+      "fingerprint": "960ba15467451458bcfe5de6b4715b678eef7c408ca67a3302fe66814e9ec90a"
+    },
+    {
+      "ruleId": "MR201",
+      "slug": "alter-column-type-rewrite",
+      "severity": "error",
+      "confidence": "definite",
+      "title": "Changing the type of \"orders.external_id\" rewrites the table",
+      "why": "Postgres rewrites every row of orders and rebuilds its indexes while it holds an ACCESS EXCLUSIVE lock. Reads and writes wait until the rewrite finishes.",
+      "location": {
+        "path": "../../testdata/sql/MR201/bad/two_columns.sql",
+        "start": {
+          "line": 1,
+          "column": 1,
+          "offset": 0
+        },
+        "end": {
+          "line": 3,
+          "column": 61,
+          "offset": 115
+        }
+      },
+      "statement": {
+        "index": 0,
+        "sql": "ALTER TABLE orders\n  ALTER COLUMN user_id TYPE bigint,\n  ALTER COLUMN external_id TYPE uuid USING external_id::uuid",
+        "inTransaction": false
+      },
+      "lock": {
+        "mode": "ACCESS EXCLUSIVE",
+        "tables": [
+          "orders"
+        ],
+        "blocks": [
+          "SELECT",
+          "INSERT",
+          "UPDATE",
+          "DELETE"
+        ],
+        "rewrite": true,
+        "scan": false
+      },
+      "fix": {
+        "summary": "Change the type with expand and contract instead of rewriting the table in place:",
+        "framework": "sql",
+        "steps": [
+          {
+            "title": "Add external_id_new with the new type",
+            "lang": "sql",
+            "code": "ALTER TABLE orders ADD COLUMN external_id_new uuid;"
+          },
+          {
+            "title": "Write to both columns and backfill external_id_new in batches"
+          },
+          {
+            "title": "Read from external_id_new, then drop external_id and rename external_id_new"
+          }
+        ]
+      },
+      "migrationId": "sql:../../testdata/sql/MR201/bad/two_columns.sql",
+      "fingerprint": "960ba15467451458bcfe5de6b4715b678eef7c408ca67a3302fe66814e9ec90a"
+    },
+    {
+      "ruleId": "MR302",
+      "slug": "rename-column",
+      "severity": "error",
+      "confidence": "likely",
+      "title": "Renaming column \"users.users\" breaks running code",
+      "why": "During a rolling deploy, instances running the previous release still query \"users\". Those queries fail as soon as this migration runs.",
+      "location": {
+        "path": "../../testdata/sql/MR302/bad/in_transaction.sql",
+        "start": {
+          "line": 3,
+          "column": 35,
+          "offset": 85
+        },
+        "end": {
+          "line": 3,
+          "column": 40,
+          "offset": 90
+        }
+      },
+      "statement": {
+        "index": 2,
+        "sql": "ALTER TABLE users RENAME COLUMN users TO username",
+        "inTransaction": true
+      },
+      "lock": {
+        "mode": "ACCESS EXCLUSIVE",
+        "tables": [
+          "users"
+        ],
+        "blocks": [
+          "SELECT",
+          "INSERT",
+          "UPDATE",
+          "DELETE"
+        ],
+        "rewrite": false,
+        "scan": false
+      },
+      "fix": {
+        "summary": "Rename in three deploys with expand and contract:",
+        "framework": "sql",
+        "steps": [
+          {
+            "title": "Add username, write to both columns and backfill it"
+          },
+          {
+            "title": "Read from username and stop writing users"
+          },
+          {
+            "title": "Drop users"
+          }
+        ]
+      },
+      "migrationId": "sql:../../testdata/sql/MR302/bad/in_transaction.sql",
+      "fingerprint": "f4f916d715797bfadd32fd37278f24c2d9463e38f41fa3da0264b759c559451c"
+    },
+    {
+      "ruleId": "MR901",
+      "slug": "parse-error",
+      "severity": "error",
+      "confidence": "definite",
+      "title": "Could not parse SQL",
+      "why": "syntax error at or near \"SELEC\". Other statements in this file were still analyzed.",
+      "location": {
+        "path": "../../testdata/sql/MR901/bad/misspelled_keyword.sql",
+        "start": {
+          "line": 3,
+          "column": 1,
+          "offset": 68
+        },
+        "end": {
+          "line": 3,
+          "column": 6,
+          "offset": 73
+        }
+      },
+      "statement": {
+        "index": 1,
+        "sql": "SELEC id FROM orders",
+        "inTransaction": false
+      },
+      "migrationId": "sql:../../testdata/sql/MR901/bad/misspelled_keyword.sql",
+      "fingerprint": "59a9090b93deb7393653eac4e09c611e56629e16aa758f6d8de1364d3256151b"
+    }
+  ],
+  "ruleErrors": []
+}

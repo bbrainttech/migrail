@@ -1,0 +1,8 @@
+{
+  "bad/int_to_bigint.sql": [{"line": 1, "column": 1, "severity": "error", "confidence": "likely"}],
+  "bad/to_text_set_data_type.sql": [{"line": 1, "column": 1, "severity": "warning", "confidence": "possible"}],
+  "bad/to_timestamptz.sql": [{"line": 2, "column": 1, "severity": "warning", "confidence": "possible"}],
+  "bad/to_varchar.sql": [{"line": 1, "column": 1, "severity": "warning", "confidence": "possible"}],
+  "bad/two_columns.sql": [{"line": 1, "column": 1, "severity": "error", "confidence": "likely"}, {"line": 1, "column": 1, "severity": "error", "confidence": "definite"}],
+  "bad/using_expression.sql": [{"line": 1, "column": 1, "severity": "error", "confidence": "definite"}]
+}

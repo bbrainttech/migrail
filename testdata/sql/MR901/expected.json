@@ -1,0 +1,7 @@
+{
+  "bad/misspelled_keyword.sql": [{"line": 3, "column": 1, "severity": "error", "confidence": "definite"}],
+  "bad/missing_parenthesis.sql": [{"line": 1, "column": 34, "severity": "error", "confidence": "definite"}],
+  "bad/second_statement.sql": [{"line": 2, "column": 16, "severity": "error", "confidence": "definite"}],
+  "bad/typo.sql": [{"line": 1, "column": 42, "severity": "error", "confidence": "definite"}],
+  "bad/unterminated_string.sql": [{"line": 1, "column": 1, "severity": "error", "confidence": "definite"}]
+}

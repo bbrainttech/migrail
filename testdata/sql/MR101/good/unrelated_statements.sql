@@ -1,0 +1,2 @@
+ALTER TABLE orders ADD COLUMN status text;
+DROP INDEX CONCURRENTLY IF EXISTS idx_orders_old;
