@@ -64,8 +64,8 @@
         "path": "../../testdata/sql/MR104/bad/inline_column_reference.sql",
         "start": {
           "line": 1,
-          "column": 1,
-          "offset": 0
+          "column": 31,
+          "offset": 30
         },
         "end": {
           "line": 1,

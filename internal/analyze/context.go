@@ -1,6 +1,10 @@
 package analyze
 
-import "github.com/bbrainttech/migrail/internal/ir"
+import (
+	"maps"
+
+	"github.com/bbrainttech/migrail/internal/ir"
+)
 
 const defaultSchema = "public"
 
@@ -53,6 +57,12 @@ type tracker struct {
 	newTables     map[string]struct{}
 	notNullChecks map[string]notNullCheck
 	settings      map[string]settingValue
+	savepoint     *schemaState
+}
+
+type schemaState struct {
+	newTables     map[string]struct{}
+	notNullChecks map[string]notNullCheck
 }
 
 func newTracker() *tracker {
@@ -89,9 +99,16 @@ func (t *tracker) apply(stmt *ir.Statement) {
 	switch stmt.Kind {
 	case ir.StmtBegin:
 		t.explicitTx = true
-	case ir.StmtCommit, ir.StmtRollback:
-		t.explicitTx = false
-		t.clearLocalSettings()
+		t.savepoint = &schemaState{newTables: maps.Clone(t.newTables), notNullChecks: maps.Clone(t.notNullChecks)}
+	case ir.StmtCommit:
+		t.endTransaction()
+	case ir.StmtRollback:
+		if t.savepoint != nil {
+			t.newTables = t.savepoint.newTables
+			t.notNullChecks = t.savepoint.notNullChecks
+		}
+
+		t.endTransaction()
 	case ir.StmtSet:
 		t.settings[stmt.Setting.Name] = settingValue{value: stmt.Setting.Value, local: stmt.Setting.Local}
 	case ir.StmtReset:
@@ -102,6 +119,12 @@ func (t *tracker) apply(stmt *ir.Statement) {
 	for _, effect := range stmt.Effects {
 		t.applyEffect(effect)
 	}
+}
+
+func (t *tracker) endTransaction() {
+	t.explicitTx = false
+	t.savepoint = nil
+	t.clearLocalSettings()
 }
 
 func (t *tracker) clearLocalSettings() {
@@ -118,6 +141,9 @@ func (t *tracker) applyEffect(effect ir.Effect) {
 		t.newTables[tableKey(effect.Object)] = struct{}{}
 	case ir.EffectDropTable:
 		delete(t.newTables, tableKey(effect.Object))
+		t.dropChecks(func(check notNullCheck) bool { return check.table == tableKey(effect.Object) })
+	case ir.EffectDropConstraint:
+		delete(t.notNullChecks, constraintKey(effect.Object, effect.Constraint))
 	case ir.EffectRenameTable:
 		t.renameTable(effect)
 	case ir.EffectAddNotNullCheck:
@@ -133,6 +159,10 @@ func (t *tracker) applyEffect(effect ir.Effect) {
 			t.notNullChecks[key] = check
 		}
 	}
+}
+
+func (t *tracker) dropChecks(matches func(notNullCheck) bool) {
+	maps.DeleteFunc(t.notNullChecks, func(_ string, check notNullCheck) bool { return matches(check) })
 }
 
 func (t *tracker) renameTable(effect ir.Effect) {

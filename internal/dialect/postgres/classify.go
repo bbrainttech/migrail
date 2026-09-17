@@ -15,9 +15,11 @@ func classify(stmt *ir.Statement, node *pg_query.Node) {
 	case node.GetVariableSetStmt() != nil:
 		classifySet(stmt, node.GetVariableSetStmt())
 	case node.GetCreateStmt() != nil:
-		classifyCreateTable(stmt, RelationRef(node.GetCreateStmt().GetRelation()))
+		create := node.GetCreateStmt()
+		classifyCreateTable(stmt, RelationRef(create.GetRelation()), create.GetIfNotExists())
 	case node.GetCreateTableAsStmt() != nil:
-		classifyCreateTable(stmt, RelationRef(node.GetCreateTableAsStmt().GetInto().GetRel()))
+		create := node.GetCreateTableAsStmt()
+		classifyCreateTable(stmt, RelationRef(create.GetInto().GetRel()), create.GetIfNotExists())
 	case node.GetIndexStmt() != nil:
 		stmt.Kind = ir.StmtCreateIndex
 		stmt.Targets = []ir.ObjectRef{RelationRef(node.GetIndexStmt().GetRelation())}
@@ -78,9 +80,14 @@ func settingValue(args []*pg_query.Node) string {
 	}
 }
 
-func classifyCreateTable(stmt *ir.Statement, table ir.ObjectRef) {
+func classifyCreateTable(stmt *ir.Statement, table ir.ObjectRef, ifNotExists bool) {
 	stmt.Kind = ir.StmtCreateTable
 	stmt.Targets = []ir.ObjectRef{table}
+
+	if ifNotExists {
+		return
+	}
+
 	stmt.Effects = append(stmt.Effects, ir.Effect{Kind: ir.EffectCreateTable, Object: table})
 }
 
@@ -123,6 +130,8 @@ func commandEffect(table ir.ObjectRef, cmd *pg_query.AlterTableCmd) (ir.Effect, 
 	switch cmd.GetSubtype() {
 	case pg_query.AlterTableType_AT_ValidateConstraint:
 		return ir.Effect{Kind: ir.EffectValidateConstraint, Object: table, Constraint: cmd.GetName()}, true
+	case pg_query.AlterTableType_AT_DropConstraint:
+		return ir.Effect{Kind: ir.EffectDropConstraint, Object: table, Constraint: cmd.GetName()}, true
 	case pg_query.AlterTableType_AT_AddConstraint:
 		return notNullCheckEffect(table, cmd.GetDef().GetConstraint())
 	default:

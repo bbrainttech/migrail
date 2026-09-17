@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/bbrainttech/migrail/internal/ir"
@@ -126,16 +127,95 @@ func TestParseRecoversAfterSyntaxError(t *testing.T) {
 	}
 }
 
-func TestParseUnterminatedString(t *testing.T) {
+func TestParseKeepsStatementsBeforeScannerError(t *testing.T) {
 	t.Parallel()
 
-	statements, err := New().Parse("SELECT 'unterminated")
-	if err != nil {
-		t.Fatalf("Parse() error = %v", err)
+	tests := []struct {
+		name      string
+		sql       string
+		wantKinds []ir.StmtKind
+		wantRest  string
+		wantLine  int
+		wantCol   int
+	}{
+		{
+			name:      "unterminated string alone",
+			sql:       "SELECT 'unterminated",
+			wantKinds: []ir.StmtKind{ir.StmtParseError},
+			wantRest:  "SELECT 'unterminated",
+			wantLine:  1,
+			wantCol:   8,
+		},
+		{
+			name:      "valid statements before the error",
+			sql:       "CREATE INDEX i ON t (a);\nBEGIN;\n\nSELECT 'abc;\nDROP TABLE t;\n",
+			wantKinds: []ir.StmtKind{ir.StmtCreateIndex, ir.StmtBegin, ir.StmtParseError},
+			wantRest:  "SELECT 'abc;\nDROP TABLE t;",
+			wantLine:  4,
+			wantCol:   8,
+		},
+		{
+			name:      "unterminated comment",
+			sql:       "SELECT 1; /* open",
+			wantKinds: []ir.StmtKind{ir.StmtUnknown, ir.StmtParseError},
+			wantRest:  "/* open",
+			wantLine:  1,
+			wantCol:   11,
+		},
 	}
 
-	if len(statements) != 1 || statements[0].ParseError == nil {
-		t.Fatalf("want a single parse error statement, got %+v", statements)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			statements, err := New().Parse(tt.sql)
+			if err != nil {
+				t.Fatalf("Parse() error = %v", err)
+			}
+
+			kinds := make([]ir.StmtKind, 0, len(statements))
+			for _, stmt := range statements {
+				kinds = append(kinds, stmt.Kind)
+			}
+
+			if !slices.Equal(kinds, tt.wantKinds) {
+				t.Fatalf("kinds = %v, want %v", kinds, tt.wantKinds)
+			}
+
+			last := statements[len(statements)-1]
+			if last.SQL != tt.wantRest || !last.ParseError.CoversRest {
+				t.Errorf("rest = %q (covers rest %v), want %q", last.SQL, last.ParseError.CoversRest, tt.wantRest)
+			}
+
+			if start := last.ParseError.Span.Start; start.Line != tt.wantLine || start.Column != tt.wantCol {
+				t.Errorf("error position = %d:%d, want %d:%d", start.Line, start.Column, tt.wantLine, tt.wantCol)
+			}
+		})
+	}
+}
+
+func TestDefaultConstraintName(t *testing.T) {
+	t.Parallel()
+
+	long := strings.Repeat("t", 62)
+
+	tests := []struct {
+		table   string
+		columns []string
+		label   string
+		want    string
+	}{
+		{table: "orders", columns: []string{"user_id"}, label: "fkey", want: "orders_user_id_fkey"},
+		{table: "orders", columns: []string{"a", "b"}, label: "fkey", want: "orders_a_b_fkey"},
+		{table: long, columns: []string{"email"}, label: "check", want: strings.Repeat("t", 51) + "_email_check"},
+		{table: "t", columns: []string{strings.Repeat("c", 70)}, label: "check", want: "t_" + strings.Repeat("c", 55) + "_check"},
+	}
+
+	for _, tt := range tests {
+		got := DefaultConstraintName(tt.table, tt.columns, tt.label)
+		if got != tt.want || len(got) > maxIdentifierLength {
+			t.Errorf("DefaultConstraintName(%q, %v, %q) = %q (%d bytes), want %q", tt.table, tt.columns, tt.label, got, len(got), tt.want)
+		}
 	}
 }
 

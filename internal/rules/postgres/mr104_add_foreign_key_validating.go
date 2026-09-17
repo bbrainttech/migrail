@@ -49,17 +49,31 @@ func (addForeignKeyValidating) Check(c *analyze.Context, stmt *ir.Statement) []i
 	for _, cmdNode := range alter.GetCmds() {
 		cmd := cmdNode.GetAlterTableCmd()
 
+		var (
+			finding  ir.Finding
+			location int32
+			found    bool
+		)
+
 		switch cmd.GetSubtype() {
 		case pg_query.AlterTableType_AT_AddConstraint:
-			if finding, ok := tableForeignKeyFinding(table, cmd.GetDef().GetConstraint()); ok {
-				findings = append(findings, finding)
-			}
+			location = cmd.GetDef().GetConstraint().GetLocation()
+			finding, found = tableForeignKeyFinding(table, cmd.GetDef().GetConstraint())
 		case pg_query.AlterTableType_AT_AddColumn:
-			if finding, ok := columnForeignKeyFinding(table, cmd.GetDef().GetColumnDef()); ok {
-				findings = append(findings, finding)
-			}
+			location = cmd.GetDef().GetColumnDef().GetLocation()
+			finding, found = columnForeignKeyFinding(table, cmd.GetDef().GetColumnDef())
 		default:
 		}
+
+		if !found {
+			continue
+		}
+
+		if span, ok := node.ClauseSpan(location); ok {
+			finding.Location.Span = span
+		}
+
+		findings = append(findings, finding)
 	}
 
 	return findings

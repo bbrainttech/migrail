@@ -112,6 +112,7 @@ const (
 	EffectRenameTable        EffectKind = "rename_table"
 	EffectAddNotNullCheck    EffectKind = "add_not_null_check"
 	EffectValidateConstraint EffectKind = "validate_constraint"
+	EffectDropConstraint     EffectKind = "drop_constraint"
 )
 
 type Effect struct {
@@ -130,8 +131,9 @@ type Setting struct {
 }
 
 type ParseError struct {
-	Message string
-	Span    Span
+	Message    string
+	Span       Span
+	CoversRest bool
 }
 
 type SourceLoc struct {

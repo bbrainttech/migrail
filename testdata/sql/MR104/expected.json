@@ -1,7 +1,62 @@
 {
-  "bad/inline_column_reference.sql": [{"line": 1, "column": 1, "severity": "error", "confidence": "definite"}],
-  "bad/named.sql": [{"line": 1, "column": 1, "severity": "error", "confidence": "definite"}],
-  "bad/referenced_table_is_new.sql": [{"line": 2, "column": 1, "severity": "error", "confidence": "definite"}],
-  "bad/two_in_one_statement.sql": [{"line": 1, "column": 1, "severity": "error", "confidence": "definite"}, {"line": 1, "column": 1, "severity": "error", "confidence": "definite"}],
-  "bad/unnamed.sql": [{"line": 1, "column": 1, "severity": "error", "confidence": "definite"}]
+  "bad/inline_column_reference.sql": [
+    {
+      "line": 1,
+      "column": 31,
+      "severity": "error",
+      "confidence": "definite"
+    }
+  ],
+  "bad/named.sql": [
+    {
+      "line": 1,
+      "column": 24,
+      "severity": "error",
+      "confidence": "definite"
+    }
+  ],
+  "bad/referenced_table_is_new.sql": [
+    {
+      "line": 2,
+      "column": 24,
+      "severity": "error",
+      "confidence": "definite"
+    }
+  ],
+  "bad/same_referenced_table_twice.sql": [
+    {
+      "line": 1,
+      "column": 23,
+      "severity": "error",
+      "confidence": "definite"
+    },
+    {
+      "line": 1,
+      "column": 74,
+      "severity": "error",
+      "confidence": "definite"
+    }
+  ],
+  "bad/two_in_one_statement.sql": [
+    {
+      "line": 2,
+      "column": 7,
+      "severity": "error",
+      "confidence": "definite"
+    },
+    {
+      "line": 3,
+      "column": 7,
+      "severity": "error",
+      "confidence": "definite"
+    }
+  ],
+  "bad/unnamed.sql": [
+    {
+      "line": 1,
+      "column": 24,
+      "severity": "error",
+      "confidence": "definite"
+    }
+  ]
 }

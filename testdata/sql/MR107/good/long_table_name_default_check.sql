@@ -1,0 +1,3 @@
+ALTER TABLE customer_subscription_billing_history_entries_archive_2026_par ADD CHECK (email IS NOT NULL) NOT VALID;
+ALTER TABLE customer_subscription_billing_history_entries_archive_2026_par VALIDATE CONSTRAINT customer_subscription_billing_history_entries_archi_email_check;
+ALTER TABLE customer_subscription_billing_history_entries_archive_2026_par ALTER COLUMN email SET NOT NULL;

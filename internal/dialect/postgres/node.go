@@ -54,6 +54,34 @@ func (n *Node) IdentifierSpan(afterKeyword, name string) (ir.Span, bool) {
 	return ir.Span{}, false
 }
 
+func (n *Node) ClauseSpan(location int32) (ir.Span, bool) {
+	start := n.Base + int(location)
+	end := -1
+	depth := 0
+
+	for _, token := range n.tokens() {
+		if int(token.GetStart()) < start {
+			continue
+		}
+
+		switch token.GetToken() {
+		case pg_query.Token_ASCII_40:
+			depth++
+		case pg_query.Token_ASCII_41:
+			depth--
+		case pg_query.Token_ASCII_44:
+			if depth == 0 {
+				return n.source.lines.Span(start, max(end, start)), end >= 0
+			}
+		default:
+		}
+
+		end = int(token.GetEnd())
+	}
+
+	return n.source.lines.Span(start, max(end, start)), end >= 0
+}
+
 func (n *Node) InsertAfterKeyword(keyword, insertion string) (string, bool) {
 	for _, token := range n.tokens() {
 		if !strings.EqualFold(n.tokenText(token), keyword) {
@@ -131,13 +159,29 @@ func StringValues(nodes []*pg_query.Node) []string {
 	return values
 }
 
-func DefaultConstraintName(table string, columns []string, suffix string) string {
-	name := strings.Join(append([]string{table}, columns...), "_") + "_" + suffix
-	if len(name) > maxIdentifierLength {
-		name = name[:maxIdentifierLength]
+func DefaultConstraintName(table string, columns []string, label string) string {
+	columnPart := strings.Join(columns, "_")
+	overhead := len(label) + 1
+
+	if columnPart != "" {
+		overhead++
 	}
 
-	return name
+	tableChars, columnChars := len(table), len(columnPart)
+	for tableChars+columnChars > maxIdentifierLength-overhead {
+		if tableChars > columnChars {
+			tableChars--
+		} else {
+			columnChars--
+		}
+	}
+
+	name := table[:tableChars]
+	if columnPart != "" {
+		name += "_" + columnPart[:columnChars]
+	}
+
+	return name + "_" + label
 }
 
 const maxIdentifierLength = 63

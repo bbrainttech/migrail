@@ -58,22 +58,7 @@ type piece struct {
 func (d *Dialect) Parse(sql string) ([]*ir.Statement, error) {
 	src := &source{text: sql, lines: ir.NewLineIndex(sql)}
 
-	scan, err := pg_query.Scan(sql)
-	if err != nil {
-		return []*ir.Statement{src.fileError(err)}, nil
-	}
-
-	src.tokens = significantTokens(scan.GetTokens())
-
-	var statements []*ir.Statement
-
-	tree, err := pg_query.Parse(sql)
-	if err == nil {
-		statements, err = src.statementsFromTree(tree, 0, len(sql))
-	} else {
-		statements, err = src.statementsFromPieces()
-	}
-
+	statements, err := src.parse()
 	if err != nil {
 		return nil, err
 	}
@@ -83,6 +68,109 @@ func (d *Dialect) Parse(sql string) ([]*ir.Statement, error) {
 	}
 
 	return statements, nil
+}
+
+func (s *source) parse() ([]*ir.Statement, error) {
+	scan, err := pg_query.Scan(s.text)
+	if err != nil {
+		return s.parseUntilScanError(err)
+	}
+
+	s.tokens = significantTokens(scan.GetTokens())
+
+	return s.parseScanned(len(s.text))
+}
+
+func (s *source) parseScanned(limit int) ([]*ir.Statement, error) {
+	tree, err := pg_query.Parse(s.text[:limit])
+	if err == nil {
+		return s.statementsFromTree(tree, 0, limit)
+	}
+
+	return s.statementsFromPieces(limit)
+}
+
+func (s *source) parseUntilScanError(scanErr error) ([]*ir.Statement, error) {
+	message := scanErr.Error()
+	errorOffset := 0
+
+	var parseErr *parser.Error
+	if errors.As(scanErr, &parseErr) {
+		message = parseErr.Message
+		errorOffset = s.lines.RuneOffset(max(parseErr.Cursorpos-1, 0))
+	}
+
+	prefixTokens, ok := scanTokens(s.text[:errorOffset])
+	if !ok {
+		return []*ir.Statement{s.unreadableRest(0, 0, message)}, nil
+	}
+
+	cut := 0
+
+	for _, token := range prefixTokens {
+		if token.GetToken() == pg_query.Token_ASCII_59 {
+			cut = int(token.GetEnd())
+		}
+	}
+
+	s.tokens = s.tokensBefore(prefixTokens, cut)
+
+	statements := []*ir.Statement{}
+
+	if cut > 0 {
+		parsed, err := s.parseScanned(cut)
+		if err != nil {
+			return nil, err
+		}
+
+		statements = parsed
+	}
+
+	return append(statements, s.unreadableRest(cut, errorOffset, message)), nil
+}
+
+func scanTokens(text string) ([]*pg_query.ScanToken, bool) {
+	scan, err := pg_query.Scan(text)
+	if err != nil {
+		return nil, false
+	}
+
+	return significantTokens(scan.GetTokens()), true
+}
+
+func (s *source) tokensBefore(tokens []*pg_query.ScanToken, limit int) []*pg_query.ScanToken {
+	kept := tokens[:0]
+
+	for _, token := range tokens {
+		if int(token.GetEnd()) <= limit {
+			kept = append(kept, token)
+		}
+	}
+
+	return kept
+}
+
+func (s *source) unreadableRest(start, errorOffset int, message string) *ir.Statement {
+	rest := s.text[start:]
+	trimmedStart := start + len(rest) - len(strings.TrimLeft(rest, " \t\r\n"))
+	end := len(strings.TrimRight(s.text, " \t\r\n"))
+	end = max(end, trimmedStart)
+
+	errorEnd := end
+	if newline := strings.IndexByte(s.text[errorOffset:end], '\n'); newline >= 0 {
+		errorEnd = errorOffset + newline
+	}
+
+	return &ir.Statement{
+		SQL:  s.text[trimmedStart:end],
+		Kind: ir.StmtParseError,
+		Span: s.lines.Span(trimmedStart, end),
+		ParseError: &ir.ParseError{
+			Message:    message,
+			Span:       s.lines.Span(errorOffset, errorEnd),
+			CoversRest: true,
+		},
+	}
 }
 
 func significantTokens(tokens []*pg_query.ScanToken) []*pg_query.ScanToken {
@@ -125,10 +213,10 @@ func (s *source) statementsFromTree(tree *pg_query.ParseResult, base, limit int)
 	return statements, nil
 }
 
-func (s *source) statementsFromPieces() ([]*ir.Statement, error) {
+func (s *source) statementsFromPieces(limit int) ([]*ir.Statement, error) {
 	statements := []*ir.Statement{}
 
-	for _, p := range s.pieces() {
+	for _, p := range s.pieces(limit) {
 		text := s.text[p.start:p.end]
 
 		tree, err := pg_query.Parse(text)
@@ -156,7 +244,7 @@ func (s *source) statementsFromPieces() ([]*ir.Statement, error) {
 	return statements, nil
 }
 
-func (s *source) pieces() []piece {
+func (s *source) pieces(limit int) []piece {
 	pieces := []piece{}
 	start := 0
 
@@ -169,7 +257,7 @@ func (s *source) pieces() []piece {
 		start = int(token.GetEnd())
 	}
 
-	return append(pieces, piece{start: start, end: len(s.text)})
+	return append(pieces, piece{start: start, end: limit})
 }
 
 func (s *source) tokensIn(start, end int) []*pg_query.ScanToken {
@@ -223,21 +311,4 @@ func (s *source) tokenSpanAt(offset int) ir.Span {
 	}
 
 	return s.lines.Span(offset, min(offset+1, len(s.text)))
-}
-
-func (s *source) fileError(err error) *ir.Statement {
-	span := s.lines.Span(0, len(s.text))
-	message := err.Error()
-
-	var parseErr *parser.Error
-	if errors.As(err, &parseErr) {
-		message = parseErr.Message
-	}
-
-	return &ir.Statement{
-		SQL:        s.text,
-		Kind:       ir.StmtParseError,
-		Span:       span,
-		ParseError: &ir.ParseError{Message: "could not tokenize SQL: " + message, Span: span},
-	}
 }
