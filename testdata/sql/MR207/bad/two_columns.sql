@@ -1,0 +1,3 @@
+ALTER TABLE orders
+  ADD COLUMN a text NOT NULL,
+  ADD COLUMN b int NOT NULL;

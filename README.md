@@ -134,11 +134,29 @@ Shell completion: `migrail completion bash|zsh|fish|powershell`.
 | ID | Rule | Severity |
 |---|---|---|
 | MR101 | `create-index-non-concurrent`: `CREATE INDEX` without `CONCURRENTLY` blocks writes | error |
+| MR102 | `drop-index-non-concurrent`: `DROP INDEX` without `CONCURRENTLY` blocks all queries | warning |
 | MR104 | `add-foreign-key-validating`: a foreign key without `NOT VALID` blocks writes on both tables | error |
+| MR105 | `add-check-validating`: a `CHECK` constraint without `NOT VALID` blocks all queries | error |
+| MR106 | `add-unique-constraint-blocking`: `UNIQUE` or `PRIMARY KEY` builds an index under an exclusive lock | error |
 | MR107 | `set-not-null-scan`: `SET NOT NULL` scans the table while blocking all queries | error |
 | MR201 | `alter-column-type-rewrite`: changing a column type rewrites the table | error |
+| MR202 | `add-column-volatile-default`: a volatile default such as `gen_random_uuid()` rewrites the table | error |
+| MR205 | `vacuum-full-or-cluster`: `VACUUM FULL` and `CLUSTER` rewrite tables while blocking all queries | error |
+| MR207 | `add-column-not-null-no-default`: a `NOT NULL` column without a default fails on tables with rows | error |
+| MR301 | `drop-column-in-use`: dropping a column breaks code that still uses it | warning |
 | MR302 | `rename-column`: renaming a column breaks code that still uses the old name | error |
+| MR303 | `rename-table`: renaming a table breaks code that still uses the old name | error |
+| MR304 | `drop-table-in-use`: dropping a table breaks code that still uses it (off until code scanning) | warning |
+| MR402 | `concurrent-in-transaction`: `CONCURRENTLY` fails inside a transaction | error |
+| MR403 | `missing-lock-timeout`: locking DDL without `lock_timeout` can queue every query behind it | warning |
+| MR404 | `not-valid-validate-same-tx`: validating in the same transaction as `NOT VALID` keeps the lock | error |
+| MR501 | `truncate-table`: `TRUNCATE` deletes every row | error |
+| MR502 | `drop-table`: `DROP TABLE` deletes the table and its data | warning |
+| MR503 | `delete-or-update-without-where`: `UPDATE` or `DELETE` without `WHERE` changes every row | error |
 | MR901 | `parse-error`: the SQL can't be parsed | error |
+| MR903 | `dynamic-sql`: SQL inside a `DO` block can't be checked | notice |
+
+Run `migrail explain <ID>` for what each rule detects, why it matters and how to fix it.
 
 Statements on tables created earlier in the same set of files don't trigger lock rules, because those tables are still empty.
 

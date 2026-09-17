@@ -1,7 +1,12 @@
 [31m✖[m [1mMR101[m db/migrations/20260917101500_add_orders_index.sql:2  Index creation blocks writes on [34m"orders"[m
+[33m▲[m [1mMR403[m db/migrations/20260917101500_add_orders_index.sql:2  No lock_timeout before locking DDL
+[33m▲[m [1mMR403[m db/migrations/20260917101600_add_orders_user_fk.sql:1  No lock_timeout before locking DDL
 [31m✖[m [1mMR104[m db/migrations/20260917101600_add_orders_user_fk.sql:1  Foreign key blocks writes on [34m"orders"[m and [34m"users"[m
 [33m▲[m [1mMR201[m db/migrations/20260917101700_widen_user_name.sql:1  Changing the type of [34m"users.name"[m may rewrite the table
+[33m▲[m [1mMR403[m db/migrations/20260917101700_widen_user_name.sql:1  No lock_timeout before locking DDL
+[33m▲[m [1mMR403[m db/migrations/20260917102000_rename_user_email.sql:1  No lock_timeout before locking DDL
 [31m✖[m [1mMR302[m db/migrations/20260917102000_rename_user_email.sql:1  Renaming column [34m"users.email"[m breaks running code
 [31m✖[m [1mMR101[m db/migrations/20260917102100_index_user_email.sql:1  Index creation blocks writes on [34m"users"[m
-[31m4 errors[m[90m · [m[33m1 warning[m[90m · [m[90m118ms[m
+[33m▲[m [1mMR403[m db/migrations/20260917102100_index_user_email.sql:1  No lock_timeout before locking DDL
+[31m4 errors[m[90m · [m[33m6 warnings[m[90m · [m[90m118ms[m
 [1;31mFailing:[m 4 findings at or above "error"

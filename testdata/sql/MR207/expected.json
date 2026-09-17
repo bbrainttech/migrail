@@ -1,0 +1,48 @@
+{
+  "bad/basic.sql": [
+    {
+      "line": 1,
+      "column": 31,
+      "severity": "error",
+      "confidence": "definite"
+    }
+  ],
+  "bad/primary_key_column.sql": [
+    {
+      "line": 1,
+      "column": 31,
+      "severity": "error",
+      "confidence": "definite"
+    }
+  ],
+  "bad/two_columns.sql": [
+    {
+      "line": 2,
+      "column": 14,
+      "severity": "error",
+      "confidence": "definite"
+    },
+    {
+      "line": 3,
+      "column": 14,
+      "severity": "error",
+      "confidence": "definite"
+    }
+  ],
+  "bad/with_check.sql": [
+    {
+      "line": 1,
+      "column": 31,
+      "severity": "error",
+      "confidence": "definite"
+    }
+  ],
+  "bad/without_column_keyword.sql": [
+    {
+      "line": 1,
+      "column": 24,
+      "severity": "error",
+      "confidence": "definite"
+    }
+  ]
+}

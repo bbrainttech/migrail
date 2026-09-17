@@ -1,0 +1,48 @@
+{
+  "bad/primary_key.sql": [
+    {
+      "line": 1,
+      "column": 24,
+      "severity": "error",
+      "confidence": "definite"
+    }
+  ],
+  "bad/primary_key_named.sql": [
+    {
+      "line": 1,
+      "column": 24,
+      "severity": "error",
+      "confidence": "definite"
+    }
+  ],
+  "bad/unique_and_primary.sql": [
+    {
+      "line": 2,
+      "column": 7,
+      "severity": "error",
+      "confidence": "definite"
+    },
+    {
+      "line": 3,
+      "column": 7,
+      "severity": "error",
+      "confidence": "definite"
+    }
+  ],
+  "bad/unique_named.sql": [
+    {
+      "line": 1,
+      "column": 24,
+      "severity": "error",
+      "confidence": "definite"
+    }
+  ],
+  "bad/unique_unnamed.sql": [
+    {
+      "line": 1,
+      "column": 24,
+      "severity": "error",
+      "confidence": "definite"
+    }
+  ]
+}

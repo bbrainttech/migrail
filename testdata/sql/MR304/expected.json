@@ -1,0 +1,48 @@
+{
+  "bad/basic.sql": [
+    {
+      "line": 1,
+      "column": 1,
+      "severity": "warning",
+      "confidence": "possible"
+    }
+  ],
+  "bad/cascade.sql": [
+    {
+      "line": 1,
+      "column": 1,
+      "severity": "warning",
+      "confidence": "possible"
+    }
+  ],
+  "bad/if_exists.sql": [
+    {
+      "line": 1,
+      "column": 1,
+      "severity": "warning",
+      "confidence": "possible"
+    }
+  ],
+  "bad/in_transaction.sql": [
+    {
+      "line": 2,
+      "column": 1,
+      "severity": "warning",
+      "confidence": "possible"
+    }
+  ],
+  "bad/two_tables.sql": [
+    {
+      "line": 1,
+      "column": 1,
+      "severity": "warning",
+      "confidence": "possible"
+    },
+    {
+      "line": 1,
+      "column": 1,
+      "severity": "warning",
+      "confidence": "possible"
+    }
+  ]
+}

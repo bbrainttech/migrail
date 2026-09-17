@@ -78,6 +78,17 @@ const (
 	SetNotNull              Operation = "set_not_null"
 	AlterColumnType         Operation = "alter_column_type"
 	RenameColumn            Operation = "rename_column"
+	DropIndex               Operation = "drop_index"
+	AddCheck                Operation = "add_check"
+	AddUnique               Operation = "add_unique"
+	AddColumn               Operation = "add_column"
+	AddColumnRewrite        Operation = "add_column_rewrite"
+	DropColumn              Operation = "drop_column"
+	RenameTable             Operation = "rename_table"
+	DropTable               Operation = "drop_table"
+	Truncate                Operation = "truncate"
+	VacuumFull              Operation = "vacuum_full"
+	Cluster                 Operation = "cluster"
 )
 
 type Entry struct {
@@ -94,6 +105,17 @@ var entries = map[Operation]Entry{
 	SetNotNull:              {Mode: AccessExclusive, Scan: true},
 	AlterColumnType:         {Mode: AccessExclusive, Rewrite: true},
 	RenameColumn:            {Mode: AccessExclusive},
+	DropIndex:               {Mode: AccessExclusive},
+	AddCheck:                {Mode: AccessExclusive, Scan: true},
+	AddUnique:               {Mode: AccessExclusive, Scan: true},
+	AddColumn:               {Mode: AccessExclusive},
+	AddColumnRewrite:        {Mode: AccessExclusive, Rewrite: true},
+	DropColumn:              {Mode: AccessExclusive},
+	RenameTable:             {Mode: AccessExclusive},
+	DropTable:               {Mode: AccessExclusive},
+	Truncate:                {Mode: AccessExclusive},
+	VacuumFull:              {Mode: AccessExclusive, Rewrite: true},
+	Cluster:                 {Mode: AccessExclusive, Rewrite: true},
 }
 
 func Lookup(op Operation) (Entry, bool) {

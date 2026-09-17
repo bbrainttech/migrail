@@ -1,0 +1,1 @@
+DO LANGUAGE plpgsql $$ BEGIN PERFORM 1; END $$;

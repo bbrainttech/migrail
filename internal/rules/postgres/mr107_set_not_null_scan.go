@@ -108,7 +108,7 @@ func setNotNullSteps(column ir.ColumnRef) ([]ir.FixStep, error) {
 
 	return []ir.FixStep{
 		{Title: "Add the check without scanning existing rows", Lang: langSQL, Code: addCheck},
-		{Title: "Validate it in a separate migration", Lang: langSQL, Code: validate},
+		{Title: stepValidateSeparately, Lang: langSQL, Code: validate},
 		{Title: "Set NOT NULL, then drop the check", Lang: langSQL, Code: joinSQL(setNotNull, dropCheck)},
 	}, nil
 }

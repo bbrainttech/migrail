@@ -1,0 +1,3 @@
+BEGIN;
+DROP TABLE invoices;
+COMMIT;

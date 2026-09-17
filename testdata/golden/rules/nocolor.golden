@@ -1,8 +1,24 @@
-  [1mID     Rule                         Severity  Category       Postgres[m
-  [1mMR101[m  create-index-non-concurrent  error     locking        all
-  [1mMR104[m  add-foreign-key-validating   error     locking        all
-  [1mMR107[m  set-not-null-scan            error     locking        all
-  [1mMR201[m  alter-column-type-rewrite    error     rewrite        all
-  [1mMR302[m  rename-column                error     compatibility  all
-  [1mMR901[m  parse-error                  error     diagnostic     all
-  6 rules · 6 enabled · run migrail explain <ID>
+  [1mID     Rule                            Severity  Category       Postgres[m
+  [1mMR101[m  create-index-non-concurrent     error     locking        all
+  [1mMR102[m  drop-index-non-concurrent       warning   locking        all
+  [1mMR104[m  add-foreign-key-validating      error     locking        all
+  [1mMR105[m  add-check-validating            error     locking        all
+  [1mMR106[m  add-unique-constraint-blocking  error     locking        all
+  [1mMR107[m  set-not-null-scan               error     locking        all
+  [1mMR201[m  alter-column-type-rewrite       error     rewrite        all
+  [1mMR202[m  add-column-volatile-default     error     rewrite        all
+  [1mMR205[m  vacuum-full-or-cluster          error     rewrite        all
+  [1mMR207[m  add-column-not-null-no-default  error     rewrite        all
+  [1mMR301[m  drop-column-in-use              warning   compatibility  all
+  [1mMR302[m  rename-column                   error     compatibility  all
+  [1mMR303[m  rename-table                    error     compatibility  all
+  MR304  drop-table-in-use               off       compatibility  all
+  [1mMR402[m  concurrent-in-transaction       error     transaction    all
+  [1mMR403[m  missing-lock-timeout            warning   transaction    all
+  [1mMR404[m  not-valid-validate-same-tx      error     transaction    all
+  [1mMR501[m  truncate-table                  error     data           all
+  [1mMR502[m  drop-table                      warning   data           all
+  [1mMR503[m  delete-or-update-without-where  error     data           all
+  [1mMR901[m  parse-error                     error     diagnostic     all
+  [1mMR903[m  dynamic-sql                     notice    diagnostic     all
+  22 rules · 21 enabled · run migrail explain <ID>

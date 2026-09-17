@@ -1,1 +1,34 @@
-ok 3 migrations checked - no issues - 118ms
+migrail 0.1.0 - postgres 16 - 3 files
+
+> db/migrations/0001_index.sql
+
+  ! warning MR403 No lock_timeout before locking DDL
+
+     ,- db/migrations/0001_index.sql:1:1
+   1 | CREATE INDEX CONCURRENTLY idx_orders_status ON orders (status);
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     |- why     If a long query holds a lock on orders, this statement waits for it, and every query
+     |          that arrives afterwards queues behind this statement.
+     `- fix     Set a lock timeout at the top of the migration, and retry the migration if it times
+                out:
+
+                SET lock_timeout = '5s';
+
+> db/migrations/0002_fk.sql
+
+  ! warning MR403 No lock_timeout before locking DDL
+
+     ,- db/migrations/0002_fk.sql:1:1
+   1 | ALTER TABLE orders ADD CONSTRAINT orders_user_id_fkey FOREIGN KEY (user_id) REFERENCES use...
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^...
+     |
+     |- why     If a long query holds a lock on orders, this statement waits for it, and every query
+     |          that arrives afterwards queues behind this statement.
+     `- fix     Set a lock timeout at the top of the migration, and retry the migration if it times
+                out:
+
+                SET lock_timeout = '5s';
+
+----------------------------------------------------------------------------------------------------
+  x 0 errors  ! 2 warnings  i 0 notices                                    3 files - 4 stmts - 118ms

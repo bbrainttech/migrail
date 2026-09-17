@@ -1,0 +1,50 @@
+{
+  "bad/after_reset.sql": [
+    {
+      "line": 3,
+      "column": 1,
+      "severity": "warning",
+      "confidence": "likely"
+    }
+  ],
+  "bad/alter_table.sql": [
+    {
+      "line": 1,
+      "column": 1,
+      "severity": "warning",
+      "confidence": "likely"
+    }
+  ],
+  "bad/create_trigger.sql": [
+    {
+      "line": 1,
+      "column": 1,
+      "severity": "warning",
+      "confidence": "likely"
+    }
+  ],
+  "bad/local_timeout_after_commit.sql": [
+    {
+      "line": 5,
+      "column": 1,
+      "severity": "warning",
+      "confidence": "likely"
+    }
+  ],
+  "bad/reported_once.sql": [
+    {
+      "line": 1,
+      "column": 1,
+      "severity": "warning",
+      "confidence": "likely"
+    }
+  ],
+  "bad/timeout_disabled.sql": [
+    {
+      "line": 2,
+      "column": 1,
+      "severity": "warning",
+      "confidence": "likely"
+    }
+  ]
+}

@@ -2,6 +2,21 @@ migrail 0.1.0 - postgres 16 - 1 file
 
 > db/migrations/20260917_x.sql
 
+  ! warning MR403 No lock_timeout before locking DDL
+
+     ,- db/migrations/20260917_x.sql:2:1
+   1 | -- first statement is fine
+   2 | ALTER TABLE orders ADD COLUMN note text;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     |- why     If a long query holds a lock on orders, this statement waits for
+     |          it, and every query that arrives afterwards queues behind this
+     |          statement.
+     `- fix     Set a lock timeout at the top of the migration, and retry the
+                migration if it times out:
+
+                SET lock_timeout = '5s';
+
   x error MR901 Could not parse SQL
 
      ,- db/migrations/20260917_x.sql:3:1
@@ -12,5 +27,5 @@ migrail 0.1.0 - postgres 16 - 1 file
      `- note    Other statements in this file were still analyzed.
 
 --------------------------------------------------------------------------------
-  x 1 error  ! 0 warnings  i 0 notices                  1 file - 2 stmts - 118ms
+  x 1 error  ! 1 warning  i 0 notices                   1 file - 2 stmts - 118ms
   Failing: 1 finding at or above "error"

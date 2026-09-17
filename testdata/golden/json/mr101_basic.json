@@ -12,7 +12,7 @@
     "migrations": 1,
     "statements": 1,
     "errors": 1,
-    "warnings": 0,
+    "warnings": 1,
     "notices": 0
   },
   "migrations": [
@@ -75,6 +75,44 @@
       },
       "migrationId": "sql:../../testdata/sql/MR101/bad/basic.sql",
       "fingerprint": "259e7a9b78aa2b606f19d6e8ba7419f0b86d3ce39c7288798abe5889d51de550"
+    },
+    {
+      "ruleId": "MR403",
+      "slug": "missing-lock-timeout",
+      "severity": "warning",
+      "confidence": "likely",
+      "title": "No lock_timeout before locking DDL",
+      "why": "If a long query holds a lock on orders, this statement waits for it, and every query that arrives afterwards queues behind this statement.",
+      "location": {
+        "path": "../../testdata/sql/MR101/bad/basic.sql",
+        "start": {
+          "line": 1,
+          "column": 1,
+          "offset": 0
+        },
+        "end": {
+          "line": 1,
+          "column": 50,
+          "offset": 49
+        }
+      },
+      "statement": {
+        "index": 0,
+        "sql": "CREATE INDEX idx_orders_status ON orders (status)",
+        "inTransaction": false
+      },
+      "fix": {
+        "summary": "Set a lock timeout at the top of the migration, and retry the migration if it times out:",
+        "framework": "sql",
+        "steps": [
+          {
+            "lang": "sql",
+            "code": "SET lock_timeout = '5s';"
+          }
+        ]
+      },
+      "migrationId": "sql:../../testdata/sql/MR101/bad/basic.sql",
+      "fingerprint": "8cd3cc11efd06427b906077b674c2a8e69eda33cbe66c235608efe8ad944058f"
     }
   ],
   "ruleErrors": []

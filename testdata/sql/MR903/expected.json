@@ -1,0 +1,42 @@
+{
+  "bad/after_ddl.sql": [
+    {
+      "line": 2,
+      "column": 1,
+      "severity": "notice",
+      "confidence": "definite"
+    }
+  ],
+  "bad/do_block.sql": [
+    {
+      "line": 1,
+      "column": 1,
+      "severity": "notice",
+      "confidence": "definite"
+    }
+  ],
+  "bad/do_language.sql": [
+    {
+      "line": 1,
+      "column": 1,
+      "severity": "notice",
+      "confidence": "definite"
+    }
+  ],
+  "bad/in_transaction.sql": [
+    {
+      "line": 2,
+      "column": 1,
+      "severity": "notice",
+      "confidence": "definite"
+    }
+  ],
+  "bad/multiline.sql": [
+    {
+      "line": 1,
+      "column": 1,
+      "severity": "notice",
+      "confidence": "definite"
+    }
+  ]
+}

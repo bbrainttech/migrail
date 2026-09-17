@@ -1,7 +1,12 @@
 x MR101 db/migrations/20260917101500_add_orders_index.sql:2  Index creation blocks writes on "orders"
+! MR403 db/migrations/20260917101500_add_orders_index.sql:2  No lock_timeout before locking DDL
+! MR403 db/migrations/20260917101600_add_orders_user_fk.sql:1  No lock_timeout before locking DDL
 x MR104 db/migrations/20260917101600_add_orders_user_fk.sql:1  Foreign key blocks writes on "orders" and "users"
 ! MR201 db/migrations/20260917101700_widen_user_name.sql:1  Changing the type of "users.name" may rewrite the table
+! MR403 db/migrations/20260917101700_widen_user_name.sql:1  No lock_timeout before locking DDL
+! MR403 db/migrations/20260917102000_rename_user_email.sql:1  No lock_timeout before locking DDL
 x MR302 db/migrations/20260917102000_rename_user_email.sql:1  Renaming column "users.email" breaks running code
 x MR101 db/migrations/20260917102100_index_user_email.sql:1  Index creation blocks writes on "users"
-4 errors - 1 warning - 118ms
+! MR403 db/migrations/20260917102100_index_user_email.sql:1  No lock_timeout before locking DDL
+4 errors - 6 warnings - 118ms
 Failing: 4 findings at or above "error"

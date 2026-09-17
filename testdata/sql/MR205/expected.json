@@ -1,0 +1,42 @@
+{
+  "bad/after_other_statements.sql": [
+    {
+      "line": 2,
+      "column": 1,
+      "severity": "error",
+      "confidence": "definite"
+    }
+  ],
+  "bad/cluster.sql": [
+    {
+      "line": 1,
+      "column": 1,
+      "severity": "error",
+      "confidence": "definite"
+    }
+  ],
+  "bad/vacuum_full.sql": [
+    {
+      "line": 1,
+      "column": 1,
+      "severity": "error",
+      "confidence": "definite"
+    }
+  ],
+  "bad/vacuum_full_database.sql": [
+    {
+      "line": 1,
+      "column": 1,
+      "severity": "error",
+      "confidence": "definite"
+    }
+  ],
+  "bad/vacuum_full_options.sql": [
+    {
+      "line": 1,
+      "column": 1,
+      "severity": "error",
+      "confidence": "definite"
+    }
+  ]
+}

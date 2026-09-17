@@ -12,7 +12,7 @@
     "migrations": 5,
     "statements": 9,
     "errors": 6,
-    "warnings": 0,
+    "warnings": 5,
     "notices": 0
   },
   "migrations": [
@@ -53,6 +53,44 @@
     }
   ],
   "findings": [
+    {
+      "ruleId": "MR403",
+      "slug": "missing-lock-timeout",
+      "severity": "warning",
+      "confidence": "likely",
+      "title": "No lock_timeout before locking DDL",
+      "why": "If a long query holds a lock on orders, this statement waits for it, and every query that arrives afterwards queues behind this statement.",
+      "location": {
+        "path": "../../testdata/sql/MR104/bad/inline_column_reference.sql",
+        "start": {
+          "line": 1,
+          "column": 1,
+          "offset": 0
+        },
+        "end": {
+          "line": 1,
+          "column": 85,
+          "offset": 84
+        }
+      },
+      "statement": {
+        "index": 0,
+        "sql": "ALTER TABLE orders ADD COLUMN user_id bigint REFERENCES users (id) ON DELETE CASCADE",
+        "inTransaction": false
+      },
+      "fix": {
+        "summary": "Set a lock timeout at the top of the migration, and retry the migration if it times out:",
+        "framework": "sql",
+        "steps": [
+          {
+            "lang": "sql",
+            "code": "SET lock_timeout = '5s';"
+          }
+        ]
+      },
+      "migrationId": "sql:../../testdata/sql/MR104/bad/inline_column_reference.sql",
+      "fingerprint": "75e3ffd98fe14818ebef3163df3827a2fe3d444b0606a46837fb16aadc549bc0"
+    },
     {
       "ruleId": "MR104",
       "slug": "add-foreign-key-validating",
@@ -175,6 +213,44 @@
       "fingerprint": "7cdabb3bcc324b4026756ff517fdc0ef3c8e5b6d3e07cc87b02c640a592bbcec"
     },
     {
+      "ruleId": "MR403",
+      "slug": "missing-lock-timeout",
+      "severity": "warning",
+      "confidence": "likely",
+      "title": "No lock_timeout before locking DDL",
+      "why": "If a long query holds a lock on orders, this statement waits for it, and every query that arrives afterwards queues behind this statement.",
+      "location": {
+        "path": "../../testdata/sql/MR107/bad/basic.sql",
+        "start": {
+          "line": 1,
+          "column": 1,
+          "offset": 0
+        },
+        "end": {
+          "line": 1,
+          "column": 52,
+          "offset": 51
+        }
+      },
+      "statement": {
+        "index": 0,
+        "sql": "ALTER TABLE orders ALTER COLUMN status SET NOT NULL",
+        "inTransaction": false
+      },
+      "fix": {
+        "summary": "Set a lock timeout at the top of the migration, and retry the migration if it times out:",
+        "framework": "sql",
+        "steps": [
+          {
+            "lang": "sql",
+            "code": "SET lock_timeout = '5s';"
+          }
+        ]
+      },
+      "migrationId": "sql:../../testdata/sql/MR107/bad/basic.sql",
+      "fingerprint": "3b46d283cb9a354471582212ec639b67f92d2189f91d7a92021b3f46dace0646"
+    },
+    {
       "ruleId": "MR201",
       "slug": "alter-column-type-rewrite",
       "severity": "error",
@@ -293,6 +369,82 @@
       "fingerprint": "960ba15467451458bcfe5de6b4715b678eef7c408ca67a3302fe66814e9ec90a"
     },
     {
+      "ruleId": "MR403",
+      "slug": "missing-lock-timeout",
+      "severity": "warning",
+      "confidence": "likely",
+      "title": "No lock_timeout before locking DDL",
+      "why": "If a long query holds a lock on orders, this statement waits for it, and every query that arrives afterwards queues behind this statement.",
+      "location": {
+        "path": "../../testdata/sql/MR201/bad/two_columns.sql",
+        "start": {
+          "line": 1,
+          "column": 1,
+          "offset": 0
+        },
+        "end": {
+          "line": 3,
+          "column": 61,
+          "offset": 115
+        }
+      },
+      "statement": {
+        "index": 0,
+        "sql": "ALTER TABLE orders\n  ALTER COLUMN user_id TYPE bigint,\n  ALTER COLUMN external_id TYPE uuid USING external_id::uuid",
+        "inTransaction": false
+      },
+      "fix": {
+        "summary": "Set a lock timeout at the top of the migration, and retry the migration if it times out:",
+        "framework": "sql",
+        "steps": [
+          {
+            "lang": "sql",
+            "code": "SET lock_timeout = '5s';"
+          }
+        ]
+      },
+      "migrationId": "sql:../../testdata/sql/MR201/bad/two_columns.sql",
+      "fingerprint": "40dfdd274b34e1ba681d5e756a8eee06233c4e3a6b2425db87bfe856374c6fcd"
+    },
+    {
+      "ruleId": "MR403",
+      "slug": "missing-lock-timeout",
+      "severity": "warning",
+      "confidence": "likely",
+      "title": "No lock_timeout before locking DDL",
+      "why": "If a long query holds a lock on users, this statement waits for it, and every query that arrives afterwards queues behind this statement.",
+      "location": {
+        "path": "../../testdata/sql/MR302/bad/in_transaction.sql",
+        "start": {
+          "line": 2,
+          "column": 1,
+          "offset": 7
+        },
+        "end": {
+          "line": 2,
+          "column": 43,
+          "offset": 49
+        }
+      },
+      "statement": {
+        "index": 1,
+        "sql": "ALTER TABLE users ADD COLUMN nickname text",
+        "inTransaction": true
+      },
+      "fix": {
+        "summary": "Set a lock timeout at the top of the migration, and retry the migration if it times out:",
+        "framework": "sql",
+        "steps": [
+          {
+            "lang": "sql",
+            "code": "SET lock_timeout = '5s';"
+          }
+        ]
+      },
+      "migrationId": "sql:../../testdata/sql/MR302/bad/in_transaction.sql",
+      "fingerprint": "cb7298f4bb6a35a82f28e587c33463a2026543c10238f862ca4a1f2205609032"
+    },
+    {
       "ruleId": "MR302",
       "slug": "rename-column",
       "severity": "error",
@@ -348,6 +500,44 @@
       },
       "migrationId": "sql:../../testdata/sql/MR302/bad/in_transaction.sql",
       "fingerprint": "f4f916d715797bfadd32fd37278f24c2d9463e38f41fa3da0264b759c559451c"
+    },
+    {
+      "ruleId": "MR403",
+      "slug": "missing-lock-timeout",
+      "severity": "warning",
+      "confidence": "likely",
+      "title": "No lock_timeout before locking DDL",
+      "why": "If a long query holds a lock on orders, this statement waits for it, and every query that arrives afterwards queues behind this statement.",
+      "location": {
+        "path": "../../testdata/sql/MR901/bad/misspelled_keyword.sql",
+        "start": {
+          "line": 2,
+          "column": 1,
+          "offset": 27
+        },
+        "end": {
+          "line": 2,
+          "column": 40,
+          "offset": 66
+        }
+      },
+      "statement": {
+        "index": 0,
+        "sql": "ALTER TABLE orders ADD COLUMN note text",
+        "inTransaction": false
+      },
+      "fix": {
+        "summary": "Set a lock timeout at the top of the migration, and retry the migration if it times out:",
+        "framework": "sql",
+        "steps": [
+          {
+            "lang": "sql",
+            "code": "SET lock_timeout = '5s';"
+          }
+        ]
+      },
+      "migrationId": "sql:../../testdata/sql/MR901/bad/misspelled_keyword.sql",
+      "fingerprint": "89334d1e6f1e267214938bb465e893acd6e3cbf3b7216ec35e79e277c646c5cf"
     },
     {
       "ruleId": "MR901",

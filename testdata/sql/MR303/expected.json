@@ -1,0 +1,42 @@
+{
+  "bad/basic.sql": [
+    {
+      "line": 1,
+      "column": 13,
+      "severity": "error",
+      "confidence": "likely"
+    }
+  ],
+  "bad/if_exists.sql": [
+    {
+      "line": 1,
+      "column": 23,
+      "severity": "error",
+      "confidence": "likely"
+    }
+  ],
+  "bad/in_transaction.sql": [
+    {
+      "line": 2,
+      "column": 13,
+      "severity": "error",
+      "confidence": "likely"
+    }
+  ],
+  "bad/quoted.sql": [
+    {
+      "line": 1,
+      "column": 13,
+      "severity": "error",
+      "confidence": "likely"
+    }
+  ],
+  "bad/schema_qualified.sql": [
+    {
+      "line": 1,
+      "column": 21,
+      "severity": "error",
+      "confidence": "likely"
+    }
+  ]
+}

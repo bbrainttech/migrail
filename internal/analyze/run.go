@@ -61,7 +61,7 @@ func Run(ctx context.Context, dialect Dialect, migrations []*ir.Migration, rules
 }
 
 func checkMigration(dialect Dialect, migration *ir.Migration, rules []Rule, opts Options, state *tracker, result *Result) {
-	state.startMigration()
+	state.startMigration(migration)
 
 	analysisContext := &Context{
 		Dialect:   dialect.Name(),
@@ -92,7 +92,7 @@ func checkMigration(dialect Dialect, migration *ir.Migration, rules []Rule, opts
 			}
 		}
 
-		state.apply(stmt)
+		state.apply(migration, stmt)
 	}
 }
 

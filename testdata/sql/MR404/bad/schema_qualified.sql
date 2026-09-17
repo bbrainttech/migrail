@@ -1,0 +1,4 @@
+BEGIN;
+ALTER TABLE billing.invoices ADD CONSTRAINT c CHECK (total > 0) NOT VALID;
+ALTER TABLE billing.invoices VALIDATE CONSTRAINT c;
+COMMIT;

@@ -1,0 +1,4 @@
+BEGIN;
+ALTER TABLE orders ADD FOREIGN KEY (user_id) REFERENCES users NOT VALID;
+ALTER TABLE orders VALIDATE CONSTRAINT orders_user_id_fkey;
+COMMIT;

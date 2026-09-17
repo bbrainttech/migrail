@@ -19,7 +19,40 @@ migrail 0.1.0 - postgres 16 - 5 files
 
                 CREATE INDEX CONCURRENTLY idx_orders_created_at ON orders (created_at);
 
+  ! warning MR403 No lock_timeout before locking DDL
+
+     ,- db/migrations/20260917101500_add_orders_index.sql:2:1
+   1 | BEGIN;
+   2 | CREATE INDEX idx_orders_created_at ON orders (crea...
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^...
+     |
+     |- why     If a long query holds a lock on orders, this
+     |          statement waits for it, and every query that
+     |          arrives afterwards queues behind this
+     |          statement.
+     `- fix     Set a lock timeout at the top of the
+                migration, and retry the migration if it
+                times out:
+
+                SET lock_timeout = '5s';
+
 > db/migrations/20260917101600_add_orders_user_fk.sql
+
+  ! warning MR403 No lock_timeout before locking DDL
+
+     ,- db/migrations/20260917101600_add_orders_user_fk.sql:1:1
+   1 | ALTER TABLE orders ADD CONSTRAINT orders_user_id_f...
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^...
+     |
+     |- why     If a long query holds a lock on orders, this
+     |          statement waits for it, and every query that
+     |          arrives afterwards queues behind this
+     |          statement.
+     `- fix     Set a lock timeout at the top of the
+                migration, and retry the migration if it
+                times out:
+
+                SET lock_timeout = '5s';
 
   x error MR104 Foreign key blocks writes on "orders" and
                 "users"
@@ -73,7 +106,39 @@ migrail 0.1.0 - postgres 16 - 5 files
                 3  Read from name_new, then drop name and
                    rename name_new
 
+  ! warning MR403 No lock_timeout before locking DDL
+
+     ,- db/migrations/20260917101700_widen_user_name.sql:1:1
+   1 | ALTER TABLE users ALTER COLUMN name TYPE varchar(2...
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     |- why     If a long query holds a lock on users, this
+     |          statement waits for it, and every query that
+     |          arrives afterwards queues behind this
+     |          statement.
+     `- fix     Set a lock timeout at the top of the
+                migration, and retry the migration if it
+                times out:
+
+                SET lock_timeout = '5s';
+
 > db/migrations/20260917102000_rename_user_email.sql
+
+  ! warning MR403 No lock_timeout before locking DDL
+
+     ,- db/migrations/20260917102000_rename_user_email.sql:1:1
+   1 | ALTER TABLE users RENAME COLUMN email TO email_add...
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^...
+     |
+     |- why     If a long query holds a lock on users, this
+     |          statement waits for it, and every query that
+     |          arrives afterwards queues behind this
+     |          statement.
+     `- fix     Set a lock timeout at the top of the
+                migration, and retry the migration if it
+                times out:
+
+                SET lock_timeout = '5s';
 
   x error MR302 Renaming column "users.email" breaks running
                 code
@@ -119,7 +184,25 @@ migrail 0.1.0 - postgres 16 - 5 files
                   ON users (lower(email))
                   WHERE deleted_at IS NULL;
 
+  ! warning MR403 No lock_timeout before locking DDL
+
+     ,- db/migrations/20260917102100_index_user_email.sql:1:1
+   1 | | CREATE INDEX
+   2 | |   idx_users_lower_email
+   3 | |   ON users (lower(email))
+   4 | |   WHERE deleted_at IS NULL;
+     |
+     |- why     If a long query holds a lock on users, this
+     |          statement waits for it, and every query that
+     |          arrives afterwards queues behind this
+     |          statement.
+     `- fix     Set a lock timeout at the top of the
+                migration, and retry the migration if it
+                times out:
+
+                SET lock_timeout = '5s';
+
 ------------------------------------------------------------
-  x 4 errors  ! 1 warning  i 0 notices
+  x 4 errors  ! 6 warnings  i 0 notices
   5 files - 7 stmts - 118ms
   Failing: 4 findings at or above "error"

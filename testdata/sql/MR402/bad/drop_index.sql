@@ -1,0 +1,3 @@
+BEGIN;
+DROP INDEX CONCURRENTLY idx_orders_status;
+COMMIT;

@@ -21,8 +21,7 @@ func classify(stmt *ir.Statement, node *pg_query.Node) {
 		create := node.GetCreateTableAsStmt()
 		classifyCreateTable(stmt, RelationRef(create.GetInto().GetRel()), create.GetIfNotExists())
 	case node.GetIndexStmt() != nil:
-		stmt.Kind = ir.StmtCreateIndex
-		stmt.Targets = []ir.ObjectRef{RelationRef(node.GetIndexStmt().GetRelation())}
+		classifyCreateIndex(stmt, node.GetIndexStmt())
 	case node.GetAlterTableStmt() != nil:
 		classifyAlterTable(stmt, node.GetAlterTableStmt())
 	case node.GetRenameStmt() != nil:
@@ -91,6 +90,21 @@ func classifyCreateTable(stmt *ir.Statement, table ir.ObjectRef, ifNotExists boo
 	stmt.Effects = append(stmt.Effects, ir.Effect{Kind: ir.EffectCreateTable, Object: table})
 }
 
+func classifyCreateIndex(stmt *ir.Statement, index *pg_query.IndexStmt) {
+	table := RelationRef(index.GetRelation())
+	stmt.Kind = ir.StmtCreateIndex
+	stmt.Targets = []ir.ObjectRef{table}
+
+	if index.GetIdxname() == "" || index.GetIfNotExists() {
+		return
+	}
+
+	stmt.Effects = append(stmt.Effects, ir.Effect{
+		Kind:   ir.EffectCreateIndex,
+		Object: ir.ObjectRef{Schema: table.Schema, Name: index.GetIdxname()},
+	})
+}
+
 func classifyAlterTable(stmt *ir.Statement, alter *pg_query.AlterTableStmt) {
 	table := RelationRef(alter.GetRelation())
 	stmt.Kind = ir.StmtAlterTable
@@ -104,6 +118,10 @@ func classifyAlterTable(stmt *ir.Statement, alter *pg_query.AlterTableStmt) {
 		}
 
 		if effect, ok := commandEffect(table, cmd); ok {
+			stmt.Effects = append(stmt.Effects, effect)
+		}
+
+		if effect, ok := addConstraintEffect(table, cmd); ok {
 			stmt.Effects = append(stmt.Effects, effect)
 		}
 	}
@@ -139,27 +157,67 @@ func commandEffect(table ir.ObjectRef, cmd *pg_query.AlterTableCmd) (ir.Effect, 
 	}
 }
 
+func addConstraintEffect(table ir.ObjectRef, cmd *pg_query.AlterTableCmd) (ir.Effect, bool) {
+	if cmd.GetSubtype() != pg_query.AlterTableType_AT_AddConstraint {
+		return ir.Effect{}, false
+	}
+
+	name := ConstraintName(table, cmd.GetDef().GetConstraint())
+	if name == "" {
+		return ir.Effect{}, false
+	}
+
+	return ir.Effect{
+		Kind:       ir.EffectAddConstraint,
+		Object:     table,
+		Constraint: name,
+		Validated:  !cmd.GetDef().GetConstraint().GetSkipValidation(),
+	}, true
+}
+
+func ConstraintName(table ir.ObjectRef, constraint *pg_query.Constraint) string {
+	if constraint.GetConname() != "" {
+		return constraint.GetConname()
+	}
+
+	switch constraint.GetContype() {
+	case pg_query.ConstrType_CONSTR_FOREIGN:
+		return DefaultConstraintName(table.Name, StringValues(constraint.GetFkAttrs()), "fkey")
+	case pg_query.ConstrType_CONSTR_CHECK:
+		if column, ok := notNullColumn(constraint); ok {
+			return DefaultConstraintName(table.Name, []string{column}, "check")
+		}
+	default:
+	}
+
+	return ""
+}
+
+func notNullColumn(constraint *pg_query.Constraint) (string, bool) {
+	test := constraint.GetRawExpr().GetNullTest()
+	if test == nil || test.GetNulltesttype() != pg_query.NullTestType_IS_NOT_NULL {
+		return "", false
+	}
+
+	fields := test.GetArg().GetColumnRef().GetFields()
+	if len(fields) != 1 || fields[0].GetString_() == nil {
+		return "", false
+	}
+
+	return fields[0].GetString_().GetSval(), true
+}
+
 func notNullCheckEffect(table ir.ObjectRef, constraint *pg_query.Constraint) (ir.Effect, bool) {
 	if constraint.GetContype() != pg_query.ConstrType_CONSTR_CHECK {
 		return ir.Effect{}, false
 	}
 
-	test := constraint.GetRawExpr().GetNullTest()
-	if test == nil || test.GetNulltesttype() != pg_query.NullTestType_IS_NOT_NULL {
+	column, ok := notNullColumn(constraint)
+	if !ok {
 		return ir.Effect{}, false
 	}
 
-	fields := test.GetArg().GetColumnRef().GetFields()
-	if len(fields) != 1 || fields[0].GetString_() == nil {
-		return ir.Effect{}, false
-	}
-
-	column := fields[0].GetString_().GetSval()
-
-	name := constraint.GetConname()
-	if name == "" {
-		name = DefaultConstraintName(table.Name, []string{column}, "check")
-	}
+	name := ConstraintName(table, constraint)
 
 	return ir.Effect{
 		Kind:       ir.EffectAddNotNullCheck,
@@ -212,8 +270,11 @@ func classifyDrop(stmt *ir.Statement, drop *pg_query.DropStmt) {
 
 		stmt.Targets = append(stmt.Targets, ref)
 
+		kind := ir.EffectDropIndex
 		if stmt.Kind == ir.StmtDropTable {
-			stmt.Effects = append(stmt.Effects, ir.Effect{Kind: ir.EffectDropTable, Object: ref})
+			kind = ir.EffectDropTable
 		}
+
+		stmt.Effects = append(stmt.Effects, ir.Effect{Kind: kind, Object: ref})
 	}
 }

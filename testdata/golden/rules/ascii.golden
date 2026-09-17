@@ -1,8 +1,24 @@
-  ID     Rule                         Severity  Category       Postgres
-  MR101  create-index-non-concurrent  error     locking        all
-  MR104  add-foreign-key-validating   error     locking        all
-  MR107  set-not-null-scan            error     locking        all
-  MR201  alter-column-type-rewrite    error     rewrite        all
-  MR302  rename-column                error     compatibility  all
-  MR901  parse-error                  error     diagnostic     all
-  6 rules - 6 enabled - run migrail explain <ID>
+  ID     Rule                            Severity  Category       Postgres
+  MR101  create-index-non-concurrent     error     locking        all
+  MR102  drop-index-non-concurrent       warning   locking        all
+  MR104  add-foreign-key-validating      error     locking        all
+  MR105  add-check-validating            error     locking        all
+  MR106  add-unique-constraint-blocking  error     locking        all
+  MR107  set-not-null-scan               error     locking        all
+  MR201  alter-column-type-rewrite       error     rewrite        all
+  MR202  add-column-volatile-default     error     rewrite        all
+  MR205  vacuum-full-or-cluster          error     rewrite        all
+  MR207  add-column-not-null-no-default  error     rewrite        all
+  MR301  drop-column-in-use              warning   compatibility  all
+  MR302  rename-column                   error     compatibility  all
+  MR303  rename-table                    error     compatibility  all
+  MR304  drop-table-in-use               off       compatibility  all
+  MR402  concurrent-in-transaction       error     transaction    all
+  MR403  missing-lock-timeout            warning   transaction    all
+  MR404  not-valid-validate-same-tx      error     transaction    all
+  MR501  truncate-table                  error     data           all
+  MR502  drop-table                      warning   data           all
+  MR503  delete-or-update-without-where  error     data           all
+  MR901  parse-error                     error     diagnostic     all
+  MR903  dynamic-sql                     notice    diagnostic     all
+  22 rules - 21 enabled - run migrail explain <ID>

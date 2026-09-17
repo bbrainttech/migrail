@@ -245,9 +245,13 @@ DROP TABLE a, public.b;
 	orders := ir.ObjectRef{Name: "orders"}
 	wantEffects := [][]ir.Effect{
 		{{Kind: ir.EffectCreateTable, Object: ir.ObjectRef{Schema: "billing", Name: "invoices"}}},
-		{{Kind: ir.EffectAddNotNullCheck, Object: orders, Column: "status", Constraint: "orders_status_nn"}},
+		{
+			{Kind: ir.EffectAddNotNullCheck, Object: orders, Column: "status", Constraint: "orders_status_nn"},
+			{Kind: ir.EffectAddConstraint, Object: orders, Constraint: "orders_status_nn"},
+		},
 		{
 			{Kind: ir.EffectAddNotNullCheck, Object: orders, Column: "total", Constraint: "orders_total_check", Validated: true},
+			{Kind: ir.EffectAddConstraint, Object: orders, Constraint: "orders_total_check", Validated: true},
 			{Kind: ir.EffectValidateConstraint, Object: orders, Constraint: "orders_status_nn"},
 		},
 		{{Kind: ir.EffectRenameTable, Object: ir.ObjectRef{Name: "Users"}, NewName: "people"}},

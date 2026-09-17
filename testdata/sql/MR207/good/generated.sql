@@ -1,0 +1,1 @@
+ALTER TABLE orders ADD COLUMN total_cents bigint NOT NULL GENERATED ALWAYS AS (total * 100) STORED;

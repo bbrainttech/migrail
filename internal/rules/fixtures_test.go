@@ -167,12 +167,13 @@ func assertFindingContent(t *testing.T, file string, finding ir.Finding) {
 		t.Errorf("%s: %s finding is missing a title, why or fingerprint: %+v", file, finding.RuleID, finding)
 	}
 
-	if finding.RuleID != "MR901" && (finding.Fix == nil || finding.Fix.Summary == "" || len(finding.Fix.Steps) == 0) {
+	isDiagnostic := strings.HasPrefix(finding.RuleID, "MR9")
+	if !isDiagnostic && (finding.Fix == nil || finding.Fix.Summary == "" || len(finding.Fix.Steps) == 0) {
 		t.Errorf("%s: %s finding has no fix steps", file, finding.RuleID)
 	}
 
 	for _, step := range findingSteps(finding) {
-		if step.Code != "" && !strings.HasSuffix(step.Code, ";") {
+		if step.Code != "" && !strings.HasPrefix(step.Code, "--") && !strings.HasSuffix(step.Code, ";") {
 			t.Errorf("%s: %s fix code does not end with a semicolon: %q", file, finding.RuleID, step.Code)
 		}
 	}

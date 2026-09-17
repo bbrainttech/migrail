@@ -1,0 +1,42 @@
+{
+  "bad/delete.sql": [
+    {
+      "line": 1,
+      "column": 1,
+      "severity": "error",
+      "confidence": "definite"
+    }
+  ],
+  "bad/multiline.sql": [
+    {
+      "line": 1,
+      "column": 1,
+      "severity": "error",
+      "confidence": "definite"
+    }
+  ],
+  "bad/update.sql": [
+    {
+      "line": 1,
+      "column": 1,
+      "severity": "error",
+      "confidence": "definite"
+    }
+  ],
+  "bad/update_from.sql": [
+    {
+      "line": 1,
+      "column": 1,
+      "severity": "error",
+      "confidence": "definite"
+    }
+  ],
+  "bad/with_returning.sql": [
+    {
+      "line": 1,
+      "column": 1,
+      "severity": "error",
+      "confidence": "definite"
+    }
+  ]
+}

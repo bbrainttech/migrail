@@ -1,0 +1,50 @@
+{
+  "bad/clock_timestamp_cast.sql": [
+    {
+      "line": 1,
+      "column": 31,
+      "severity": "error",
+      "confidence": "definite"
+    }
+  ],
+  "bad/gen_random_uuid.sql": [
+    {
+      "line": 1,
+      "column": 31,
+      "severity": "error",
+      "confidence": "definite"
+    }
+  ],
+  "bad/nextval.sql": [
+    {
+      "line": 2,
+      "column": 14,
+      "severity": "error",
+      "confidence": "definite"
+    }
+  ],
+  "bad/random_not_null.sql": [
+    {
+      "line": 1,
+      "column": 31,
+      "severity": "error",
+      "confidence": "definite"
+    }
+  ],
+  "bad/schema_qualified_function.sql": [
+    {
+      "line": 1,
+      "column": 31,
+      "severity": "error",
+      "confidence": "definite"
+    }
+  ],
+  "bad/unknown_function.sql": [
+    {
+      "line": 1,
+      "column": 31,
+      "severity": "warning",
+      "confidence": "possible"
+    }
+  ]
+}

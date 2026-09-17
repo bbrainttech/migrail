@@ -1,0 +1,42 @@
+{
+  "bad/after_other_ddl.sql": [
+    {
+      "line": 3,
+      "column": 1,
+      "severity": "error",
+      "confidence": "definite"
+    }
+  ],
+  "bad/create_index.sql": [
+    {
+      "line": 2,
+      "column": 1,
+      "severity": "error",
+      "confidence": "definite"
+    }
+  ],
+  "bad/drop_index.sql": [
+    {
+      "line": 2,
+      "column": 1,
+      "severity": "error",
+      "confidence": "definite"
+    }
+  ],
+  "bad/refresh_matview.sql": [
+    {
+      "line": 2,
+      "column": 1,
+      "severity": "error",
+      "confidence": "definite"
+    }
+  ],
+  "bad/reindex.sql": [
+    {
+      "line": 2,
+      "column": 1,
+      "severity": "error",
+      "confidence": "definite"
+    }
+  ]
+}

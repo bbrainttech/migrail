@@ -1,0 +1,48 @@
+{
+  "bad/basic.sql": [
+    {
+      "line": 1,
+      "column": 31,
+      "severity": "warning",
+      "confidence": "possible"
+    }
+  ],
+  "bad/if_exists_cascade.sql": [
+    {
+      "line": 1,
+      "column": 41,
+      "severity": "warning",
+      "confidence": "possible"
+    }
+  ],
+  "bad/quoted.sql": [
+    {
+      "line": 1,
+      "column": 33,
+      "severity": "warning",
+      "confidence": "possible"
+    }
+  ],
+  "bad/two_columns.sql": [
+    {
+      "line": 1,
+      "column": 31,
+      "severity": "warning",
+      "confidence": "possible"
+    },
+    {
+      "line": 1,
+      "column": 50,
+      "severity": "warning",
+      "confidence": "possible"
+    }
+  ],
+  "bad/without_column_keyword.sql": [
+    {
+      "line": 1,
+      "column": 24,
+      "severity": "warning",
+      "confidence": "possible"
+    }
+  ]
+}

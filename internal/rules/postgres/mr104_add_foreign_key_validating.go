@@ -107,7 +107,7 @@ func tableForeignKeyFinding(table ir.ObjectRef, constraint *pg_query.Constraint)
 	if addErr == nil && validateErr == nil {
 		finding.Fix.Steps = []ir.FixStep{
 			{Title: "Add the constraint without checking existing rows", Lang: langSQL, Code: addSQL},
-			{Title: "Validate it in a separate migration", Lang: langSQL, Code: validateSQL},
+			{Title: stepValidateSeparately, Lang: langSQL, Code: validateSQL},
 		}
 	}
 
@@ -177,7 +177,7 @@ func inlineForeignKeySteps(table ir.ObjectRef, column *pg_query.ColumnDef, forei
 
 	return []ir.FixStep{
 		{Title: "Add the column and the constraint without checking existing rows", Lang: langSQL, Code: joinSQL(addColumn, addConstraint)},
-		{Title: "Validate it in a separate migration", Lang: langSQL, Code: validate},
+		{Title: stepValidateSeparately, Lang: langSQL, Code: validate},
 	}, nil
 }
 

@@ -1494,6 +1494,11 @@ Durations are **focused working days** (a day = one solid Claude Code session wi
 - Lock verification harness for v0.1 rules on PG 12–18.
 - Homebrew tap + install script + GitHub release.
 - **Done when:** runs on 3 real OSS repos with zero crashes; clean-run budget met; lock harness green.
+- Implementation notes (2026-09-17):
+  - MR304 ships off by default. Without code scanning it would report every `DROP TABLE` a second time next to MR502. It turns on by default with the code scanner in M5.
+  - MR403 reports once per migration, at the first statement that locks an existing table without a `lock_timeout`.
+  - MR106 covers table constraints (`ADD UNIQUE`, `ADD PRIMARY KEY`). Inline `ADD COLUMN … UNIQUE` isn't detected yet.
+  - MR202 treats a small list of known volatile functions as definite, a list of known non-volatile functions as safe, and any other function in a default as a warning with `possible` confidence.
 
 ### M4: Every framework (days 9–14)
 - Django, Alembic, Laravel, EF Core, Liquibase adapters (CLI); Rails static DSL; TypeORM static; Knex/Sequelize capture.

@@ -10,7 +10,10 @@ import (
 	"github.com/bbrainttech/migrail/internal/ir"
 )
 
-const langSQL = "sql"
+const (
+	langSQL                = "sql"
+	stepValidateSeparately = "Validate it in a separate migration"
+)
 
 func quoted(name string) string {
 	return `"` + name + `"`

@@ -1,0 +1,48 @@
+{
+  "bad/after_new_table.sql": [
+    {
+      "line": 2,
+      "column": 24,
+      "severity": "error",
+      "confidence": "definite"
+    }
+  ],
+  "bad/named.sql": [
+    {
+      "line": 1,
+      "column": 24,
+      "severity": "error",
+      "confidence": "definite"
+    }
+  ],
+  "bad/not_null_check_validated.sql": [
+    {
+      "line": 1,
+      "column": 24,
+      "severity": "error",
+      "confidence": "definite"
+    }
+  ],
+  "bad/two_checks.sql": [
+    {
+      "line": 2,
+      "column": 7,
+      "severity": "error",
+      "confidence": "definite"
+    },
+    {
+      "line": 3,
+      "column": 7,
+      "severity": "error",
+      "confidence": "definite"
+    }
+  ],
+  "bad/unnamed.sql": [
+    {
+      "line": 1,
+      "column": 24,
+      "severity": "error",
+      "confidence": "definite"
+    }
+  ]
+}

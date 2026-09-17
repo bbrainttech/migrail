@@ -1,0 +1,4 @@
+BEGIN;
+SELECT 1;
+ROLLBACK;
+DROP INDEX CONCURRENTLY idx_orders_status;

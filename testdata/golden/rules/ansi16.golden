@@ -1,8 +1,24 @@
-  [1;90mID     Rule                         Severity  Category       Postgres[m
-  [1mMR101[m  create-index-non-concurrent  [31merror   [m  locking        all
-  [1mMR104[m  add-foreign-key-validating   [31merror   [m  locking        all
-  [1mMR107[m  set-not-null-scan            [31merror   [m  locking        all
-  [1mMR201[m  alter-column-type-rewrite    [31merror   [m  rewrite        all
-  [1mMR302[m  rename-column                [31merror   [m  compatibility  all
-  [1mMR901[m  parse-error                  [31merror   [m  diagnostic     all
-  [90m6 rules · 6 enabled · run [mmigrail explain <ID>
+  [1;90mID     Rule                            Severity  Category       Postgres[m
+  [1mMR101[m  create-index-non-concurrent     [31merror   [m  locking        all
+  [1mMR102[m  drop-index-non-concurrent       [33mwarning [m  locking        all
+  [1mMR104[m  add-foreign-key-validating      [31merror   [m  locking        all
+  [1mMR105[m  add-check-validating            [31merror   [m  locking        all
+  [1mMR106[m  add-unique-constraint-blocking  [31merror   [m  locking        all
+  [1mMR107[m  set-not-null-scan               [31merror   [m  locking        all
+  [1mMR201[m  alter-column-type-rewrite       [31merror   [m  rewrite        all
+  [1mMR202[m  add-column-volatile-default     [31merror   [m  rewrite        all
+  [1mMR205[m  vacuum-full-or-cluster          [31merror   [m  rewrite        all
+  [1mMR207[m  add-column-not-null-no-default  [31merror   [m  rewrite        all
+  [1mMR301[m  drop-column-in-use              [33mwarning [m  compatibility  all
+  [1mMR302[m  rename-column                   [31merror   [m  compatibility  all
+  [1mMR303[m  rename-table                    [31merror   [m  compatibility  all
+  [90mMR304  drop-table-in-use               off       compatibility  all[m
+  [1mMR402[m  concurrent-in-transaction       [31merror   [m  transaction    all
+  [1mMR403[m  missing-lock-timeout            [33mwarning [m  transaction    all
+  [1mMR404[m  not-valid-validate-same-tx      [31merror   [m  transaction    all
+  [1mMR501[m  truncate-table                  [31merror   [m  data           all
+  [1mMR502[m  drop-table                      [33mwarning [m  data           all
+  [1mMR503[m  delete-or-update-without-where  [31merror   [m  data           all
+  [1mMR901[m  parse-error                     [31merror   [m  diagnostic     all
+  [1mMR903[m  dynamic-sql                     [36mnotice  [m  diagnostic     all
+  [90m22 rules · 21 enabled · run [mmigrail explain <ID>

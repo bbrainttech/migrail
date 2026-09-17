@@ -113,6 +113,9 @@ const (
 	EffectAddNotNullCheck    EffectKind = "add_not_null_check"
 	EffectValidateConstraint EffectKind = "validate_constraint"
 	EffectDropConstraint     EffectKind = "drop_constraint"
+	EffectAddConstraint      EffectKind = "add_constraint"
+	EffectCreateIndex        EffectKind = "create_index"
+	EffectDropIndex          EffectKind = "drop_index"
 )
 
 type Effect struct {

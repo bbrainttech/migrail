@@ -1,0 +1,2 @@
+-- DO $$ BEGIN END $$;
+SELECT 1;
