@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
+
+	"github.com/bbrainttech/migrail/internal/golden"
 )
 
 const (
@@ -52,19 +54,20 @@ func TestCheckExitCodes(t *testing.T) {
 		wantCode   int
 		wantStderr string
 	}{
-		{name: "error finding fails", args: []string{"check", mr101Basic}, wantCode: exitFindings, wantStderr: `1 finding at or above "error"`},
+		{name: "error finding fails", args: []string{"check", "-f", "json", mr101Basic}, wantCode: exitFindings, wantStderr: `1 finding at or above "error"`},
+		{name: "pretty summary replaces the stderr message", args: []string{"check", mr101Basic}, wantCode: exitFindings},
 		{name: "clean file passes", args: []string{"check", fixtures + "/MR101/good/concurrently.sql"}, wantCode: exitOK},
 		{name: "fail-on never", args: []string{"check", "--fail-on", "never", mr101Basic}, wantCode: exitOK},
 		{name: "warning below threshold", args: []string{"check", fixtures + "/MR201/bad/to_varchar.sql"}, wantCode: exitOK},
 		{name: "warning at threshold", args: []string{"check", "--fail-on", "warning", fixtures + "/MR201/bad/to_varchar.sql"}, wantCode: exitFindings},
 		{name: "skip rule", args: []string{"check", "--skip-rule", "create-index-non-concurrent", mr101Basic}, wantCode: exitOK},
 		{name: "stdin", stdin: "ALTER TABLE users RENAME COLUMN email TO mail;", args: []string{"check", "-"}, wantCode: exitFindings},
-		{name: "no arguments", args: []string{"check"}, wantCode: exitUsage, wantStderr: "no migrations to check"},
-		{name: "unsupported format", args: []string{"check", "-f", "sarif", mr101Basic}, wantCode: exitUsage, wantStderr: `unsupported format "sarif"`},
+		{name: "no arguments", args: []string{"check"}, wantCode: exitUsage, wantStderr: "No migrations to check"},
+		{name: "unsupported format", args: []string{"check", "-f", "sarif", mr101Basic}, wantCode: exitUsage, wantStderr: `Unsupported format "sarif"`},
 		{name: "invalid fail-on", args: []string{"check", "--fail-on", "fatal", mr101Basic}, wantCode: exitUsage},
 		{name: "unsupported version", args: []string{"check", "--db-version", "11", mr101Basic}, wantCode: exitUsage, wantStderr: "PostgreSQL 12 to 18"},
 		{name: "invalid version", args: []string{"check", "--db-version", "latest", mr101Basic}, wantCode: exitUsage},
-		{name: "missing file", args: []string{"check", "nope.sql"}, wantCode: exitUsage, wantStderr: "read migration nope.sql"},
+		{name: "missing file", args: []string{"check", "nope.sql"}, wantCode: exitUsage, wantStderr: "Read migration nope.sql"},
 		{name: "directory", args: []string{"check", fixtures}, wantCode: exitUsage, wantStderr: "is a directory"},
 		{name: "stdin mixed with files", args: []string{"check", "-", mr101Basic}, wantCode: exitUsage},
 	}
@@ -83,7 +86,7 @@ func TestCheckExitCodes(t *testing.T) {
 				t.Errorf("stderr = %q, want it to contain %q", run.stderr, tt.wantStderr)
 			}
 
-			if tt.wantCode != exitUsage && !json.Valid([]byte(run.stdout)) {
+			if tt.wantCode != exitUsage && slices.Contains(tt.args, "json") && !json.Valid([]byte(run.stdout)) {
 				t.Errorf("stdout is not valid JSON: %q", run.stdout)
 			}
 		})
@@ -94,12 +97,12 @@ func TestCheckVersionNotice(t *testing.T) {
 	t.Parallel()
 
 	withDefault := runCLI(t, "", "check", mr101Basic)
-	if !strings.Contains(withDefault.stderr, "notice: assuming PostgreSQL 12") {
+	if !strings.Contains(withDefault.stderr, "notice assuming PostgreSQL 12") {
 		t.Errorf("stderr = %q, want the default version notice", withDefault.stderr)
 	}
 
-	withVersion := runCLI(t, "", "check", "--db-version", "16", mr101Basic)
-	if strings.Contains(withVersion.stderr, "notice:") {
+	withVersion := runCLI(t, "", "check", "-f", "json", "--db-version", "16", mr101Basic)
+	if strings.Contains(withVersion.stderr, "notice") {
 		t.Errorf("stderr = %q, want no notice when --db-version is set", withVersion.stderr)
 	}
 
@@ -129,33 +132,10 @@ func TestCheckJSONGolden(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			args := append([]string{"check", "--db-version", "16", "--fail-on", "never"}, tt.files...)
+			args := append([]string{"check", "-f", "json", "--db-version", "16", "--fail-on", "never"}, tt.files...)
 			run := runCLI(t, "", args...)
 
-			assertGolden(t, filepath.Join(goldenDir, tt.name+".json"), run.stdout)
+			golden.Assert(t, filepath.Join(goldenDir, tt.name+".json"), run.stdout)
 		})
-	}
-}
-
-func assertGolden(t *testing.T, path, got string) {
-	t.Helper()
-
-	if os.Getenv("UPDATE_GOLDEN") == "1" {
-		if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
-			t.Fatalf("create golden dir: %v", err)
-		}
-
-		if err := os.WriteFile(path, []byte(got), 0o600); err != nil {
-			t.Fatalf("write golden: %v", err)
-		}
-	}
-
-	want, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("read golden %s (run make golden-update): %v", path, err)
-	}
-
-	if got != string(want) {
-		t.Errorf("output differs from %s (run make golden-update and review the diff)\n got:\n%s", path, got)
 	}
 }

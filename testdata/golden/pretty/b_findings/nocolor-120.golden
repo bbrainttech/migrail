@@ -1,0 +1,98 @@
+migrail 0.1.0 · postgres 16 · 5 files
+
+▌ [1mdb/migrations/20260917101500_add_orders_index.sql[m
+
+  ✖ [1merror[m [1mMR101[m Index creation blocks writes on "orders"
+
+     ╭─ db/migrations/20260917101500_add_orders_index.sql:2:1
+   1 │ BEGIN;
+   2 │ CREATE INDEX idx_orders_created_at ON orders (created_at);
+     │ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     │
+     ├─ lock    SHARE on orders · blocks INSERT, UPDATE, DELETE
+     ├─ why     Postgres holds this lock until the whole index is built. INSERT, UPDATE and DELETE
+     │          on the table wait for the entire build.
+     ╰─ fix     Build the index concurrently, outside a transaction:
+
+                CREATE INDEX CONCURRENTLY idx_orders_created_at ON orders (created_at);
+
+▌ [1mdb/migrations/20260917101600_add_orders_user_fk.sql[m
+
+  ✖ [1merror[m [1mMR104[m Foreign key blocks writes on "orders" and "users"
+
+     ╭─ db/migrations/20260917101600_add_orders_user_fk.sql:1:24
+   1 │ ALTER TABLE orders ADD CONSTRAINT orders_user_id_fkey FOREIGN KEY (user_id) REFERENCES users…
+     │                        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━…
+     │
+     ├─ lock    SHARE ROW EXCLUSIVE on orders, users · blocks INSERT, UPDATE, DELETE
+     ├─ why     Postgres checks every existing row of orders against users while it holds locks on
+     │          both tables. INSERT, UPDATE and DELETE on either table wait until the check
+     │          finishes.
+     ╰─ fix     Add the constraint as NOT VALID, then validate it in a separate transaction:
+
+                1  Add the constraint without checking existing rows
+                   ALTER TABLE orders ADD CONSTRAINT orders_user_id_fkey FOREIGN KEY (user_id) REFERENCES users (id) NOT VALID;
+
+                2  Validate it in a separate migration
+                   ALTER TABLE orders VALIDATE CONSTRAINT orders_user_id_fkey;
+
+▌ [1mdb/migrations/20260917101700_widen_user_name.sql[m
+
+  ▲ [1mwarning[m [1mMR201[m Changing the type of "users.name" may rewrite the table
+
+     ╭─ db/migrations/20260917101700_widen_user_name.sql:1:1
+   1 │ ALTER TABLE users ALTER COLUMN name TYPE varchar(255);
+     │ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     │
+     ├─ lock    ACCESS EXCLUSIVE on users · blocks reads and writes · rewrites the table
+     ├─ why     Some changes to this type only update the catalog, such as varchar to text or a
+     │          longer varchar limit. Other changes rewrite every row of users under an ACCESS
+     │          EXCLUSIVE lock. migrail can't see the current column type in this migration.
+     ╰─ fix     Change the type with expand and contract instead of rewriting the table in place:
+
+                1  Add name_new with the new type
+                   ALTER TABLE users ADD COLUMN name_new varchar(255);
+
+                2  Write to both columns and backfill name_new in batches
+
+                3  Read from name_new, then drop name and rename name_new
+
+▌ [1mdb/migrations/20260917102000_rename_user_email.sql[m
+
+  ✖ [1merror[m [1mMR302[m Renaming column "users.email" breaks running code
+
+     ╭─ db/migrations/20260917102000_rename_user_email.sql:1:33
+   1 │ ALTER TABLE users RENAME COLUMN email TO email_address;
+     │                                 ━━━━━
+     │
+     ├─ lock    ACCESS EXCLUSIVE on users · blocks reads and writes
+     ├─ why     During a rolling deploy, instances running the previous release still query "email".
+     │          Those queries fail as soon as this migration runs.
+     ╰─ fix     Rename in three deploys with expand and contract:
+                1  Add email_address, write to both columns and backfill it
+                2  Read from email_address and stop writing email
+                3  Drop email
+
+▌ [1mdb/migrations/20260917102100_index_user_email.sql[m
+
+  ✖ [1merror[m [1mMR101[m Index creation blocks writes on "users"
+
+     ╭─ db/migrations/20260917102100_index_user_email.sql:1:1
+   1 │ ┃ CREATE INDEX
+   2 │ ┃   idx_users_lower_email
+   3 │ ┃   ON users (lower(email))
+   4 │ ┃   WHERE deleted_at IS NULL;
+     │
+     ├─ lock    SHARE on users · blocks INSERT, UPDATE, DELETE
+     ├─ why     Postgres holds this lock until the whole index is built. INSERT, UPDATE and DELETE
+     │          on the table wait for the entire build.
+     ╰─ fix     Build the index concurrently, outside a transaction:
+
+                CREATE INDEX CONCURRENTLY
+                  idx_users_lower_email
+                  ON users (lower(email))
+                  WHERE deleted_at IS NULL;
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+  ✖ 4 errors  ▲ 1 warning  ● 0 notices                                     5 files · 7 stmts · 118ms
+  [1mFailing:[m 4 findings at or above "error"

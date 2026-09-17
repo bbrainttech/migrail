@@ -27,19 +27,19 @@ func TestExecuteExitCodes(t *testing.T) {
 			name:       "unknown command is a usage error",
 			args:       []string{"deploy"},
 			wantCode:   exitUsage,
-			wantStderr: "Run 'migrail --help' for usage.",
+			wantStderr: "Run migrail --help for usage.",
 		},
 		{
 			name:       "unknown flag is a usage error",
 			args:       []string{"version", "--bogus"},
 			wantCode:   exitUsage,
-			wantStderr: "unknown flag: --bogus",
+			wantStderr: "Unknown flag: --bogus",
 		},
 		{
 			name:       "extra argument is a usage error",
 			args:       []string{"version", "extra"},
 			wantCode:   exitUsage,
-			wantStderr: "migrail: ",
+			wantStderr: "Unknown command",
 		},
 	}
 

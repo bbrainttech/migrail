@@ -1,0 +1,16 @@
+migrail 0.1.0 · postgres 16 · 1 file
+
+▌ [1mdb/migrations/20260917_x.sql[m
+
+  ✖ [1merror[m [1mMR901[m Could not parse SQL
+
+     ╭─ db/migrations/20260917_x.sql:3:1
+   2 │ ALTER TABLE orders ADD COLUMN note text;
+   3 │ SELEC id FROM orders;
+     │ ━━━━━ syntax error at or near "SELEC"
+     │
+     ╰─ note    Other statements in this file were still analyzed.
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+  ✖ 1 error  ▲ 0 warnings  ● 0 notices                                      1 file · 2 stmts · 118ms
+  [1mFailing:[m 1 finding at or above "error"

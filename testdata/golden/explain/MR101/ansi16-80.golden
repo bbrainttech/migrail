@@ -1,0 +1,63 @@
+  [1;34mMR101 · create-index-non-concurrent[m
+
+  [1mWhat it detects[m
+
+  [35mCREATE[m [35mINDEX[m or [35mCREATE[m [35mUNIQUE[m [35mINDEX[m without [35mCONCURRENTLY[m on a table that this
+  change set didn't create.
+
+  [1mWhy it's dangerous[m
+
+  Building an index reads the whole table. Without [35mCONCURRENTLY[m, Postgres holds
+  a [35mSHARE[m lock on the table for the entire build. Reads still work, but every
+  [35mINSERT[m, [35mUPDATE[m and [35mDELETE[m waits. On a table with millions of rows the build
+  can take minutes, and the application's write requests queue up behind it.
+
+  [1mLock & impact[m
+
+  [90mStatement:[m [35mCREATE[m [35mINDEX[m
+  [90mLock:[m [35mSHARE[m
+  [90mBlocks:[m [35mINSERT[m, [35mUPDATE[m, [35mDELETE[m
+  [90mWork:[m full table scan and index build
+
+  [90mStatement:[m [35mCREATE[m [35mINDEX[m [35mCONCURRENTLY[m
+  [90mLock:[m [35mSHARE[m [35mUPDATE[m [35mEXCLUSIVE[m
+  [90mBlocks:[m other schema changes and [35mVACUUM[m
+  [90mWork:[m two table scans, waits for older transactions
+
+  These locks apply to PostgreSQL 12 through 18.
+
+  [1mHow to fix[m
+
+  Add [35mCONCURRENTLY[m and run the statement outside a transaction. Postgres rejects
+  [35mCREATE[m [35mINDEX[m [35mCONCURRENTLY[m inside a transaction block, so turn off the
+  migration tool's transaction for this migration.
+
+    [35mCREATE[m [35mINDEX[m [35mCONCURRENTLY[m idx_orders_status [35mON[m orders (status);
+
+  If a concurrent build fails, it leaves an [35mINVALID[m index behind. Drop it with
+  [35mDROP[m [35mINDEX[m [35mCONCURRENTLY[m and run the migration again.
+
+  [1mWhen it's safe to ignore[m
+
+  [90m•  [mThe table is empty or very small in every environment.
+  [90m•  [mThe migration runs during a maintenance window with writes stopped.
+  [90m•  [mThe table is partitioned. Postgres can't build an index on a partitioned
+     table concurrently. Create the index concurrently on each partition, then
+     create it on the parent with [35mON[m [35mONLY[m and attach the partition indexes.
+
+  [1mExamples[m
+
+  Bad:
+
+    [35mCREATE[m [35mINDEX[m idx_orders_status [35mON[m orders (status);
+
+  Good:
+
+    [35mCREATE[m [35mINDEX[m [35mCONCURRENTLY[m idx_orders_status [35mON[m orders (status);
+
+  [1mReferences[m
+
+  [90m•  [m[34mPostgreSQL:[m [34mBuilding[m [34mindexes[m [34mconcurrently[m
+     [34m(https://www.postgresql.org/docs/current/sql-createindex.html#SQL-CREATEINDEX-CONCURRENTLY)[m
+  [90m•  [m[34mPostgreSQL:[m [34mTable-level[m [34mlock[m [34mmodes[m
+     [34m(https://www.postgresql.org/docs/current/explicit-locking.html#LOCKING-TABLES)[m

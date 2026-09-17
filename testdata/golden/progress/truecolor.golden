@@ -1,0 +1,4 @@
+[38;2;124;140;255m⠹[m [38;2;230;230;234mExtracting SQL[m  [38;2;139;141;152mdjango · 2 migrations  (python manage.py sqlmigrate)[m
+[38;2;95;214;155m✔[m [38;2;230;230;234mDiscovered       [m[38;2;139;141;152m3 migrations · goose           [m[38;2;139;141;152m   4ms[m
+[38;2;95;214;155m✔[m [38;2;230;230;234mExtracted SQL    [m[38;2;139;141;152mstatic                         [m[38;2;139;141;152m   2ms[m
+[38;2;95;214;155m✔[m [38;2;230;230;234mAnalyzed         [m[38;2;139;141;152m14 statements · 6 rules        [m[38;2;139;141;152m  1.2s[m

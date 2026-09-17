@@ -108,7 +108,7 @@ linters:
       - path: _test\.go
         linters:
           - goconst
-      - path: _test\.go
+      - path: (_test\.go|internal/golden/)
         linters:
           - gosec
         text: G304

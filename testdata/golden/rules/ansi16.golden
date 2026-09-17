@@ -1,0 +1,8 @@
+  [1;90mID     Rule                         Severity  Category       Postgres[m
+  [1mMR101[m  create-index-non-concurrent  [31merror   [m  locking        all
+  [1mMR104[m  add-foreign-key-validating   [31merror   [m  locking        all
+  [1mMR107[m  set-not-null-scan            [31merror   [m  locking        all
+  [1mMR201[m  alter-column-type-rewrite    [31merror   [m  rewrite        all
+  [1mMR302[m  rename-column                [31merror   [m  compatibility  all
+  [1mMR901[m  parse-error                  [31merror   [m  diagnostic     all
+  [90m6 rules · 6 enabled · run [mmigrail explain <ID>

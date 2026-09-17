@@ -1,0 +1,69 @@
+  MR101 - create-index-non-concurrent
+
+  What it detects
+
+  CREATE INDEX or CREATE UNIQUE INDEX without CONCURRENTLY
+  on a table that this change set didn't create.
+
+  Why it's dangerous
+
+  Building an index reads the whole table. Without
+  CONCURRENTLY, Postgres holds a SHARE lock on the table for
+  the entire build. Reads still work, but every INSERT,
+  UPDATE and DELETE waits. On a table with millions of rows
+  the build can take minutes, and the application's write
+  requests queue up behind it.
+
+  Lock & impact
+
+  Statement: CREATE INDEX
+  Lock: SHARE
+  Blocks: INSERT, UPDATE, DELETE
+  Work: full table scan and index build
+
+  Statement: CREATE INDEX CONCURRENTLY
+  Lock: SHARE UPDATE EXCLUSIVE
+  Blocks: other schema changes and VACUUM
+  Work: two table scans, waits for older transactions
+
+  These locks apply to PostgreSQL 12 through 18.
+
+  How to fix
+
+  Add CONCURRENTLY and run the statement outside a
+  transaction. Postgres rejects CREATE INDEX CONCURRENTLY
+  inside a transaction block, so turn off the migration
+  tool's transaction for this migration.
+
+    CREATE INDEX CONCURRENTLY idx_orders_status ON orders (status);
+
+  If a concurrent build fails, it leaves an INVALID index
+  behind. Drop it with DROP INDEX CONCURRENTLY and run the
+  migration again.
+
+  When it's safe to ignore
+
+  -  The table is empty or very small in every environment.
+  -  The migration runs during a maintenance window with
+     writes stopped.
+  -  The table is partitioned. Postgres can't build an index
+     on a partitioned table concurrently. Create the index
+     concurrently on each partition, then create it on the
+     parent with ON ONLY and attach the partition indexes.
+
+  Examples
+
+  Bad:
+
+    CREATE INDEX idx_orders_status ON orders (status);
+
+  Good:
+
+    CREATE INDEX CONCURRENTLY idx_orders_status ON orders (status);
+
+  References
+
+  -  PostgreSQL: Building indexes concurrently
+     (https://www.postgresql.org/docs/current/sql-createindex.html#SQL-CREATEINDEX-CONCURRENTLY)
+  -  PostgreSQL: Table-level lock modes
+     (https://www.postgresql.org/docs/current/explicit-locking.html#LOCKING-TABLES)

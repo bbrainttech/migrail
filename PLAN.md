@@ -227,7 +227,7 @@ The architecture is dialect-pluggable from day one (§10), so expanding never re
 | Styling / layout | `charmbracelet/lipgloss` |
 | Interactive TUI | `charmbracelet/bubbletea` + `charmbracelet/bubbles` |
 | Forms (init wizard) | `charmbracelet/huh` |
-| Markdown rendering (`explain`) | `charmbracelet/glamour` |
+| Markdown rendering (`explain`) | built in (`internal/ui/markdown`); glamour dropped, see M2 notes |
 | Terminal capability detection | `muesli/termenv` / `charmbracelet/colorprofile` |
 | Postgres parser | `pganalyze/pg_query_go` (real Postgres parser, cgo) |
 | MySQL parser (v2) | `pingcap/tidb/pkg/parser` (pure Go) |
@@ -1156,17 +1156,21 @@ Header row bold `fg.muted`; severity column colored; `off` rows fully dimmed.
 
 **J) Welcome artwork** (`migrail --help`, `migrail init`, `migrail version`)
 ```
- █▀▄▀█ █ █▀▀ █▀█ ▄▀█ █ █
- █ ▀ █ █ █▄█ █▀▄ █▀█ █ █▄▄
-═╪═══╪═══╪═══╪═══╪═══╪═══╪═
+ ███╗   ███╗██╗ ██████╗ ██████╗  █████╗ ██╗██╗
+ ████╗ ████║██║██╔════╝ ██╔══██╗██╔══██╗██║██║
+ ██╔████╔██║██║██║  ███╗██████╔╝███████║██║██║
+ ██║╚██╔╝██║██║██║   ██║██╔══██╗██╔══██║██║██║
+ ██║ ╚═╝ ██║██║╚██████╔╝██║  ██║██║  ██║██║███████╗
+ ╚═╝     ╚═╝╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝╚══════╝
+═╪═══╪═══╪═══╪═══╪═══╪═══╪═══╪═══╪═══╪═══╪═══╪═══╪═
  catch dangerous migrations
  before they reach production
 ```
 - Shown only when stdout is a TTY, the format is `pretty`, and none of `--quiet`, `--ci`, `CI=true` apply. `migrail version` without a TTY prints only its plain lines, so scripts can parse it.
-- Wordmark: horizontal gradient from `accent` to `notice`, bold. Truecolor interpolates per column; 256 colors uses the nearest palette entries; 16 colors uses `accent` only.
-- Rail line `═` in `fg.subtle`, ties `╪` in `fg.muted`. Tagline in `fg.muted`.
+- Wordmark: six rows, 51 columns, sized to fit the 60-column minimum. Solid blocks use a horizontal gradient from `accent` to `notice`, bold. Truecolor interpolates per column; 256 colors uses the nearest palette entries; 16 colors uses `accent` only. Shadow edges (`╗║╔╝╚═`) use `fg.subtle`.
+- Rail line `═` in `fg.subtle`, ties `╪` in `fg.muted`, as wide as the wordmark. Tagline in `fg.muted`.
 - One blank line after the artwork, then the screen's normal content.
-- `NO_COLOR` / `--theme mono`: same art, no color. ASCII fallback (§19.3): wordmark as `m i g r a i l`, rail as `=+===+===+===+===+===+===+=`.
+- `NO_COLOR` / `--theme mono`: same art, no color. ASCII fallback (§19.3): solid blocks become `#`, shadow edges are dropped, rail becomes `=+===+…`.
 - Width < 60: replaced by a single bold `migrail` line in `accent`.
 - The art is static string data. It adds no measurable time to `migrail version` (§21 budget: < 15 ms).
 
@@ -1475,6 +1479,14 @@ Durations are **focused working days** (a day = one solid Claude Code session wi
 - Theme tokens, components (code frame, tree labels, summary bar, spinner), pretty & compact renderers.
 - `explain`, `rules`, `completion`; golden tests.
 - **Done when:** all §19.5 screens A–E, G–H and J match goldens at all widths/profiles.
+- Implementation notes (2026-09-17):
+  - glamour was dropped. Its chroma dependency adds about 6 ms of package init to every command, including `version`, which puts the §21.1 budget at risk. `explain` uses a small renderer for the fixed rule-doc format (headings, paragraphs, lists, tables, code blocks, inline code and links).
+  - Background detection checks `COLORFGBG`, then asks the terminal through lipgloss only when stdin and stdout are both terminals. lipgloss waits up to 2 s instead of 100 ms, but it also sends a device-attributes query that nearly every terminal answers at once.
+  - The summary omits the `◌ ignored` count and the header omits framework and git base until suppressions, adapters and git detection land in M3.
+  - Fix code in findings is never truncated, so it can be copied. Code frames still truncate with `…`.
+  - Spans that cover several lines use a severity-colored `┃` marker on each line instead of a caret underline.
+  - Goldens live in `testdata/golden/` for screens A, B, C, D, E, G, H, J and help, at widths 60, 80 and 120 with truecolor, 16-color, no-color and ASCII profiles. `make golden-update` regenerates them.
+  - Startup on an M-series Mac: `version` 5.3 ms, `check` 7.2 ms, `explain` 6.0 ms.
 
 ### M3: v0.1 release (days 6–8)
 - Raw SQL adapters (golang-migrate, goose, Atlas dir, Flyway, Prisma, Drizzle, dbmate, sqitch).

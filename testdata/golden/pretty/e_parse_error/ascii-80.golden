@@ -1,0 +1,16 @@
+migrail 0.1.0 - postgres 16 - 1 file
+
+> db/migrations/20260917_x.sql
+
+  x error MR901 Could not parse SQL
+
+     ,- db/migrations/20260917_x.sql:3:1
+   2 | ALTER TABLE orders ADD COLUMN note text;
+   3 | SELEC id FROM orders;
+     | ^^^^^ syntax error at or near "SELEC"
+     |
+     `- note    Other statements in this file were still analyzed.
+
+--------------------------------------------------------------------------------
+  x 1 error  ! 0 warnings  i 0 notices                  1 file - 2 stmts - 118ms
+  Failing: 1 finding at or above "error"

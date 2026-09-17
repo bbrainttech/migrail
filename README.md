@@ -6,29 +6,37 @@ migrail reads your migrations the way your database will run them. It tells you 
 
 It's free and open source. You don't need an account or a config file, and it works on the migrations you already have.
 
-> migrail is in early development and has no release yet. You can build it from source and check PostgreSQL SQL files today. The rest of this page describes v0.1, which is in progress.
+> migrail is in early development and has no release yet. You can build it from source and check PostgreSQL SQL files today. Migration tool detection, git-aware checks and more rules arrive with v0.1.
 
 ## What it looks like
 
 ```
-▌ db/migrations/20260917101500_add_orders_status.sql
+$ migrail check db/migrations/20260917101500_add_orders_index.sql --db-version 16
+
+migrail 0.1.0 · postgres 16 · 1 file
+
+▌ db/migrations/20260917101500_add_orders_index.sql
 
   ✖ error MR101 Index creation blocks writes on "orders"
 
-     ╭─ db/migrations/20260917101500_add_orders_status.sql:6:1
-   6 │ CREATE INDEX idx_orders_status ON orders (status);
-     │ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     ╭─ db/migrations/20260917101500_add_orders_index.sql:2:1
+   1 │ BEGIN;
+   2 │ CREATE INDEX idx_orders_created_at ON orders (created_at);
+     │ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
      │
      ├─ lock    SHARE on orders · blocks INSERT, UPDATE, DELETE
-     ├─ why     Postgres holds this lock until the whole index is built.
+     ├─ why     Postgres holds this lock until the whole index is built. INSERT,
+     │          UPDATE and DELETE on the table wait for the entire build.
      ╰─ fix     Build the index concurrently, outside a transaction:
 
-                -- +goose NO TRANSACTION
-                -- +goose Up
-                CREATE INDEX CONCURRENTLY idx_orders_status ON orders (status);
+                CREATE INDEX CONCURRENTLY idx_orders_created_at ON orders (created_at);
+
+────────────────────────────────────────────────────────────────────────────────
+  ✖ 1 error  ▲ 0 warnings  ● 0 notices                    1 file · 3 stmts · 6ms
+  Failing: 1 finding at or above "error"
 ```
 
-This is the target design for v0.1.
+In a terminal, severities, table names and SQL are colored. Output adapts to the terminal width, and falls back to plain text with `NO_COLOR`, to ASCII symbols with `--ascii`, and to one line per finding below 60 columns.
 
 ## What it checks
 
@@ -77,7 +85,7 @@ make build
 
 ## Usage
 
-Check one or more SQL migration files. Results are JSON for now; the terminal view shown above comes next.
+Check one or more SQL migration files:
 
 ```
 ./bin/migrail check db/migrations/20260917101500_add_orders_status.sql --db-version 16
@@ -89,15 +97,37 @@ Read SQL from standard input:
 echo "ALTER TABLE users RENAME COLUMN email TO email_address;" | ./bin/migrail check -
 ```
 
-| Flag | Meaning |
+Learn what a rule detects and how to fix it, or list every rule:
+
+```
+./bin/migrail explain MR101
+./bin/migrail rules
+```
+
+| `check` flag | Meaning |
 |---|---|
 | `--db-version` | PostgreSQL major version you run in production, 12 to 18. Defaults to 12. |
 | `--fail-on` | Exit with code 1 on findings at or above `error` (default), `warning` or `notice`. `never` always exits 0. |
 | `-r`, `--rule` | Only run these rules, by ID or slug. |
 | `--skip-rule` | Skip these rules, by ID or slug. |
-| `-f`, `--format` | Output format. Only `json` is available today. |
+| `-f`, `--format` | `pretty` (default) or `json`. |
+| `--compact` | One line per finding. |
+| `-q`, `--quiet` | Only findings and the summary. |
+| `-v`, `--verbose` | Print each phase with its timing. |
+| `--ci` | No color, links or spinners unless `FORCE_COLOR` or `CLICOLOR_FORCE` is set. `CI=true` turns this on. |
+
+| Global flag | Meaning |
+|---|---|
+| `--color` | `auto` (default), `always` or `never`. `NO_COLOR` is respected. |
+| `--theme` | `auto` (default), `dark`, `light` or `mono`. |
+| `--ascii` | ASCII symbols instead of Unicode. |
+| `--no-hyperlinks` | Don't print clickable file links. |
+
+Findings go to standard output. Notices and progress go to standard error, so `migrail check -f json > report.json` stays clean.
 
 Exit codes: `0` no failing findings, `1` findings at or above `--fail-on`, `2` usage error, `4` internal error.
+
+Shell completion: `migrail completion bash|zsh|fish|powershell`.
 
 ### Available rules
 
@@ -116,7 +146,7 @@ Statements on tables created earlier in the same set of files don't trigger lock
 
 - [ ] Foundations: project setup, CI, cross-platform builds
 - [x] Analysis engine: Postgres parser, first rules, JSON output
-- [ ] Terminal output: colors, code frames, `explain` and `rules`
+- [x] Terminal output: colors, code frames, `explain` and `rules`
 - [ ] v0.1: PostgreSQL rules and SQL migration tools
 - [ ] v0.2: framework support, capture mode, CI integrations, package managers
 - [ ] v0.3: application code checks, live database estimates, interactive explorer

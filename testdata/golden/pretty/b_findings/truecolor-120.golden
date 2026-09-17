@@ -1,0 +1,98 @@
+[38;2;139;141;152mmigrail [m[38;2;124;140;255m0.1.0[m[38;2;139;141;152m · postgres 16 · 5 files[m
+
+[38;2;124;140;255m▌[m [1;38;2;230;230;234mdb/migrations/20260917101500_add_orders_index.sql[m
+
+  [38;2;255;107;129m✖[m [1;38;2;255;107;129merror[m [1;38;2;230;230;234mMR101[m [38;2;230;230;234mIndex creation blocks writes on [m[38;2;124;140;255m"orders"[m[38;2;230;230;234m[m
+
+     [38;2;139;141;152m╭─[m [38;2;230;230;234mdb/migrations/20260917101500_add_orders_index.sql:2:1[m
+[38;2;139;141;152m   1[m [38;2;139;141;152m│[m [38;2;230;230;234m[m[38;2;199;146;234mBEGIN[m[38;2;230;230;234m;[m
+[38;2;139;141;152m   2[m [38;2;139;141;152m│[m [38;2;230;230;234m[m[38;2;199;146;234mCREATE[m[38;2;230;230;234m [m[38;2;199;146;234mINDEX[m[38;2;230;230;234m idx_orders_created_at [m[38;2;199;146;234mON[m[38;2;230;230;234m orders (created_at);[m
+     [38;2;139;141;152m│[m [38;2;255;107;129m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[m
+     [38;2;139;141;152m│[m
+     [38;2;139;141;152m├─[m [38;2;139;141;152mlock    [m[38;2;230;230;234mSHARE on [m[38;2;124;140;255morders[m[38;2;139;141;152m · [m[38;2;230;230;234mblocks INSERT, UPDATE, DELETE[m
+     [38;2;139;141;152m├─[m [38;2;139;141;152mwhy     [m[38;2;230;230;234mPostgres holds this lock until the whole index is built. INSERT, UPDATE and DELETE[m
+     [38;2;139;141;152m│[m          [38;2;230;230;234mon the table wait for the entire build.[m
+     [38;2;139;141;152m╰─[m [38;2;95;214;155mfix     [m[38;2;230;230;234mBuild the index concurrently, outside a transaction:[m
+
+                [38;2;230;230;234m[m[38;2;199;146;234mCREATE[m[38;2;230;230;234m [m[38;2;199;146;234mINDEX[m[38;2;230;230;234m [m[38;2;199;146;234mCONCURRENTLY[m[38;2;230;230;234m idx_orders_created_at [m[38;2;199;146;234mON[m[38;2;230;230;234m orders (created_at);[m
+
+[38;2;124;140;255m▌[m [1;38;2;230;230;234mdb/migrations/20260917101600_add_orders_user_fk.sql[m
+
+  [38;2;255;107;129m✖[m [1;38;2;255;107;129merror[m [1;38;2;230;230;234mMR104[m [38;2;230;230;234mForeign key blocks writes on [m[38;2;124;140;255m"orders"[m[38;2;230;230;234m and [m[38;2;124;140;255m"users"[m[38;2;230;230;234m[m
+
+     [38;2;139;141;152m╭─[m [38;2;230;230;234mdb/migrations/20260917101600_add_orders_user_fk.sql:1:24[m
+[38;2;139;141;152m   1[m [38;2;139;141;152m│[m [38;2;230;230;234m[m[38;2;199;146;234mALTER[m[38;2;230;230;234m [m[38;2;199;146;234mTABLE[m[38;2;230;230;234m orders [m[38;2;199;146;234mADD[m[38;2;230;230;234m [m[38;2;199;146;234mCONSTRAINT[m[38;2;230;230;234m orders_user_id_fkey [m[38;2;199;146;234mFOREIGN[m[38;2;230;230;234m [m[38;2;199;146;234mKEY[m[38;2;230;230;234m (user_id) [m[38;2;199;146;234mREFERENCES[m[38;2;230;230;234m users[m[38;2;139;141;152m…[m
+     [38;2;139;141;152m│[m                        [38;2;255;107;129m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[m[38;2;139;141;152m…[m
+     [38;2;139;141;152m│[m
+     [38;2;139;141;152m├─[m [38;2;139;141;152mlock    [m[38;2;230;230;234mSHARE ROW EXCLUSIVE on [m[38;2;124;140;255morders[m[38;2;230;230;234m, [m[38;2;124;140;255musers[m[38;2;139;141;152m · [m[38;2;230;230;234mblocks INSERT, UPDATE, DELETE[m
+     [38;2;139;141;152m├─[m [38;2;139;141;152mwhy     [m[38;2;230;230;234mPostgres checks every existing row of orders against users while it holds locks on[m
+     [38;2;139;141;152m│[m          [38;2;230;230;234mboth tables. INSERT, UPDATE and DELETE on either table wait until the check[m
+     [38;2;139;141;152m│[m          [38;2;230;230;234mfinishes.[m
+     [38;2;139;141;152m╰─[m [38;2;95;214;155mfix     [m[38;2;230;230;234mAdd the constraint as NOT VALID, then validate it in a separate transaction:[m
+
+                [38;2;139;141;152m1  [m[38;2;230;230;234mAdd the constraint without checking existing rows[m
+                   [38;2;230;230;234m[m[38;2;199;146;234mALTER[m[38;2;230;230;234m [m[38;2;199;146;234mTABLE[m[38;2;230;230;234m orders [m[38;2;199;146;234mADD[m[38;2;230;230;234m [m[38;2;199;146;234mCONSTRAINT[m[38;2;230;230;234m orders_user_id_fkey [m[38;2;199;146;234mFOREIGN[m[38;2;230;230;234m [m[38;2;199;146;234mKEY[m[38;2;230;230;234m (user_id) [m[38;2;199;146;234mREFERENCES[m[38;2;230;230;234m users (id) [m[38;2;199;146;234mNOT[m[38;2;230;230;234m [m[38;2;199;146;234mVALID[m[38;2;230;230;234m;[m
+
+                [38;2;139;141;152m2  [m[38;2;230;230;234mValidate it in a separate migration[m
+                   [38;2;230;230;234m[m[38;2;199;146;234mALTER[m[38;2;230;230;234m [m[38;2;199;146;234mTABLE[m[38;2;230;230;234m orders [m[38;2;199;146;234mVALIDATE[m[38;2;230;230;234m [m[38;2;199;146;234mCONSTRAINT[m[38;2;230;230;234m orders_user_id_fkey;[m
+
+[38;2;124;140;255m▌[m [1;38;2;230;230;234mdb/migrations/20260917101700_widen_user_name.sql[m
+
+  [38;2;245;185;92m▲[m [1;38;2;245;185;92mwarning[m [1;38;2;230;230;234mMR201[m [38;2;230;230;234mChanging the type of [m[38;2;124;140;255m"users.name"[m[38;2;230;230;234m may rewrite the table[m
+
+     [38;2;139;141;152m╭─[m [38;2;230;230;234mdb/migrations/20260917101700_widen_user_name.sql:1:1[m
+[38;2;139;141;152m   1[m [38;2;139;141;152m│[m [38;2;230;230;234m[m[38;2;199;146;234mALTER[m[38;2;230;230;234m [m[38;2;199;146;234mTABLE[m[38;2;230;230;234m users [m[38;2;199;146;234mALTER[m[38;2;230;230;234m [m[38;2;199;146;234mCOLUMN[m[38;2;230;230;234m name [m[38;2;199;146;234mTYPE[m[38;2;230;230;234m varchar(255);[m
+     [38;2;139;141;152m│[m [38;2;245;185;92m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[m
+     [38;2;139;141;152m│[m
+     [38;2;139;141;152m├─[m [38;2;139;141;152mlock    [m[38;2;230;230;234mACCESS EXCLUSIVE on [m[38;2;124;140;255musers[m[38;2;139;141;152m · [m[38;2;230;230;234mblocks reads and writes[m[38;2;139;141;152m · [m[38;2;230;230;234mrewrites the table[m
+     [38;2;139;141;152m├─[m [38;2;139;141;152mwhy     [m[38;2;230;230;234mSome changes to this type only update the catalog, such as varchar to text or a[m
+     [38;2;139;141;152m│[m          [38;2;230;230;234mlonger varchar limit. Other changes rewrite every row of users under an ACCESS[m
+     [38;2;139;141;152m│[m          [38;2;230;230;234mEXCLUSIVE lock. migrail can't see the current column type in this migration.[m
+     [38;2;139;141;152m╰─[m [38;2;95;214;155mfix     [m[38;2;230;230;234mChange the type with expand and contract instead of rewriting the table in place:[m
+
+                [38;2;139;141;152m1  [m[38;2;230;230;234mAdd name_new with the new type[m
+                   [38;2;230;230;234m[m[38;2;199;146;234mALTER[m[38;2;230;230;234m [m[38;2;199;146;234mTABLE[m[38;2;230;230;234m users [m[38;2;199;146;234mADD[m[38;2;230;230;234m [m[38;2;199;146;234mCOLUMN[m[38;2;230;230;234m name_new varchar(255);[m
+
+                [38;2;139;141;152m2  [m[38;2;230;230;234mWrite to both columns and backfill name_new in batches[m
+
+                [38;2;139;141;152m3  [m[38;2;230;230;234mRead from name_new, then drop name and rename name_new[m
+
+[38;2;124;140;255m▌[m [1;38;2;230;230;234mdb/migrations/20260917102000_rename_user_email.sql[m
+
+  [38;2;255;107;129m✖[m [1;38;2;255;107;129merror[m [1;38;2;230;230;234mMR302[m [38;2;230;230;234mRenaming column [m[38;2;124;140;255m"users.email"[m[38;2;230;230;234m breaks running code[m
+
+     [38;2;139;141;152m╭─[m [38;2;230;230;234mdb/migrations/20260917102000_rename_user_email.sql:1:33[m
+[38;2;139;141;152m   1[m [38;2;139;141;152m│[m [38;2;230;230;234m[m[38;2;199;146;234mALTER[m[38;2;230;230;234m [m[38;2;199;146;234mTABLE[m[38;2;230;230;234m users [m[38;2;199;146;234mRENAME[m[38;2;230;230;234m [m[38;2;199;146;234mCOLUMN[m[38;2;230;230;234m email [m[38;2;199;146;234mTO[m[38;2;230;230;234m email_address;[m
+     [38;2;139;141;152m│[m                                 [38;2;255;107;129m━━━━━[m
+     [38;2;139;141;152m│[m
+     [38;2;139;141;152m├─[m [38;2;139;141;152mlock    [m[38;2;230;230;234mACCESS EXCLUSIVE on [m[38;2;124;140;255musers[m[38;2;139;141;152m · [m[38;2;230;230;234mblocks reads and writes[m
+     [38;2;139;141;152m├─[m [38;2;139;141;152mwhy     [m[38;2;230;230;234mDuring a rolling deploy, instances running the previous release still query "email".[m
+     [38;2;139;141;152m│[m          [38;2;230;230;234mThose queries fail as soon as this migration runs.[m
+     [38;2;139;141;152m╰─[m [38;2;95;214;155mfix     [m[38;2;230;230;234mRename in three deploys with expand and contract:[m
+                [38;2;139;141;152m1  [m[38;2;230;230;234mAdd email_address, write to both columns and backfill it[m
+                [38;2;139;141;152m2  [m[38;2;230;230;234mRead from email_address and stop writing email[m
+                [38;2;139;141;152m3  [m[38;2;230;230;234mDrop email[m
+
+[38;2;124;140;255m▌[m [1;38;2;230;230;234mdb/migrations/20260917102100_index_user_email.sql[m
+
+  [38;2;255;107;129m✖[m [1;38;2;255;107;129merror[m [1;38;2;230;230;234mMR101[m [38;2;230;230;234mIndex creation blocks writes on [m[38;2;124;140;255m"users"[m[38;2;230;230;234m[m
+
+     [38;2;139;141;152m╭─[m [38;2;230;230;234mdb/migrations/20260917102100_index_user_email.sql:1:1[m
+[38;2;139;141;152m   1[m [38;2;139;141;152m│[m [38;2;255;107;129m┃[m [38;2;230;230;234m[m[38;2;199;146;234mCREATE[m[38;2;230;230;234m [m[38;2;199;146;234mINDEX[m[38;2;230;230;234m[m
+[38;2;139;141;152m   2[m [38;2;139;141;152m│[m [38;2;255;107;129m┃[m [38;2;230;230;234m  idx_users_lower_email[m
+[38;2;139;141;152m   3[m [38;2;139;141;152m│[m [38;2;255;107;129m┃[m [38;2;230;230;234m  [m[38;2;199;146;234mON[m[38;2;230;230;234m users (lower(email))[m
+[38;2;139;141;152m   4[m [38;2;139;141;152m│[m [38;2;255;107;129m┃[m [38;2;230;230;234m  [m[38;2;199;146;234mWHERE[m[38;2;230;230;234m deleted_at [m[38;2;199;146;234mIS[m[38;2;230;230;234m [m[38;2;199;146;234mNULL[m[38;2;230;230;234m;[m
+     [38;2;139;141;152m│[m
+     [38;2;139;141;152m├─[m [38;2;139;141;152mlock    [m[38;2;230;230;234mSHARE on [m[38;2;124;140;255musers[m[38;2;139;141;152m · [m[38;2;230;230;234mblocks INSERT, UPDATE, DELETE[m
+     [38;2;139;141;152m├─[m [38;2;139;141;152mwhy     [m[38;2;230;230;234mPostgres holds this lock until the whole index is built. INSERT, UPDATE and DELETE[m
+     [38;2;139;141;152m│[m          [38;2;230;230;234mon the table wait for the entire build.[m
+     [38;2;139;141;152m╰─[m [38;2;95;214;155mfix     [m[38;2;230;230;234mBuild the index concurrently, outside a transaction:[m
+
+                [38;2;230;230;234m[m[38;2;199;146;234mCREATE[m[38;2;230;230;234m [m[38;2;199;146;234mINDEX[m[38;2;230;230;234m [m[38;2;199;146;234mCONCURRENTLY[m[38;2;230;230;234m[m
+                [38;2;230;230;234m  idx_users_lower_email[m
+                [38;2;230;230;234m  [m[38;2;199;146;234mON[m[38;2;230;230;234m users (lower(email))[m
+                [38;2;230;230;234m  [m[38;2;199;146;234mWHERE[m[38;2;230;230;234m deleted_at [m[38;2;199;146;234mIS[m[38;2;230;230;234m [m[38;2;199;146;234mNULL[m[38;2;230;230;234m;[m
+
+[38;2;58;60;69m────────────────────────────────────────────────────────────────────────────────────────────────────[m
+  [38;2;255;107;129m✖ 4 errors[m  [38;2;245;185;92m▲ 1 warning[m  [38;2;139;141;152m● 0 notices[m                                     [38;2;139;141;152m5 files · 7 stmts · 118ms[m
+  [1;38;2;255;107;129mFailing:[m [38;2;230;230;234m4 findings at or above "error"[m

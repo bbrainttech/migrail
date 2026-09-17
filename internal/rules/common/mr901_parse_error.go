@@ -33,14 +33,16 @@ func (parseError) Check(_ *analyze.Context, stmt *ir.Statement) []ir.Finding {
 		return nil
 	}
 
-	why := stmt.ParseError.Message + ". Other statements in this file were still analyzed."
+	note := "Other statements in this file were still analyzed."
 	if stmt.ParseError.CoversRest {
-		why = stmt.ParseError.Message + ". migrail can't read past this point, so the statements from here to the end of the file were not checked."
+		note = "migrail can't read past this point, so the statements from here to the end of the file were not checked."
 	}
 
 	return []ir.Finding{{
 		Title:    "Could not parse SQL",
-		Why:      why,
+		Why:      stmt.ParseError.Message + ". " + note,
+		Label:    stmt.ParseError.Message,
+		Note:     note,
 		Location: ir.SourceLoc{Span: stmt.ParseError.Span},
 	}}
 }

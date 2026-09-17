@@ -59,3 +59,26 @@ func (l *LineIndex) RuneOffset(runeIndex int) int {
 
 	return offset
 }
+
+func (l *LineIndex) LineCount() int {
+	return len(l.lineStarts)
+}
+
+func (l *LineIndex) LineBounds(line int) (start, end int) {
+	if line < 1 || line > len(l.lineStarts) {
+		return 0, 0
+	}
+
+	start = l.lineStarts[line-1]
+	end = len(l.text)
+
+	if line < len(l.lineStarts) {
+		end = l.lineStarts[line] - 1
+	}
+
+	if end > start && l.text[end-1] == '\r' {
+		end--
+	}
+
+	return start, end
+}

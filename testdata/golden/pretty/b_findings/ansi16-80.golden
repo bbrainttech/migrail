@@ -1,0 +1,104 @@
+[90mmigrail [m[34m0.1.0[m[90m · postgres 16 · 5 files[m
+
+[34m▌[m [1mdb/migrations/20260917101500_add_orders_index.sql[m
+
+  [31m✖[m [1;31merror[m [1mMR101[m Index creation blocks writes on [34m"orders"[m
+
+     [90m╭─[m db/migrations/20260917101500_add_orders_index.sql:2:1
+[90m   1[m [90m│[m [35mBEGIN[m;
+[90m   2[m [90m│[m [35mCREATE[m [35mINDEX[m idx_orders_created_at [35mON[m orders (created_at);
+     [90m│[m [31m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[m
+     [90m│[m
+     [90m├─[m [90mlock    [mSHARE on [34morders[m[90m · [mblocks INSERT, UPDATE, DELETE
+     [90m├─[m [90mwhy     [mPostgres holds this lock until the whole index is built. INSERT,
+     [90m│[m          UPDATE and DELETE on the table wait for the entire build.
+     [90m╰─[m [32mfix     [mBuild the index concurrently, outside a transaction:
+
+                [35mCREATE[m [35mINDEX[m [35mCONCURRENTLY[m idx_orders_created_at [35mON[m orders (created_at);
+
+[34m▌[m [1mdb/migrations/20260917101600_add_orders_user_fk.sql[m
+
+  [31m✖[m [1;31merror[m [1mMR104[m Foreign key blocks writes on [34m"orders"[m and [34m"users"[m
+
+     [90m╭─[m db/migrations/20260917101600_add_orders_user_fk.sql:1:24
+[90m   1[m [90m│[m [35mALTER[m [35mTABLE[m orders [35mADD[m [35mCONSTRAINT[m orders_user_id_fkey [35mFOREIGN[m [35mKEY[m (user_[35m[m[90m…[m
+     [90m│[m                        [31m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[m[90m…[m
+     [90m│[m
+     [90m├─[m [90mlock    [mSHARE ROW EXCLUSIVE on orders, users · blocks INSERT, UPDATE,
+     [90m│[m          DELETE
+     [90m├─[m [90mwhy     [mPostgres checks every existing row of orders against users while
+     [90m│[m          it holds locks on both tables. INSERT, UPDATE and DELETE on
+     [90m│[m          either table wait until the check finishes.
+     [90m╰─[m [32mfix     [mAdd the constraint as NOT VALID, then validate it in a separate
+                transaction:
+
+                [90m1  [mAdd the constraint without checking existing rows
+                   [35mALTER[m [35mTABLE[m orders [35mADD[m [35mCONSTRAINT[m orders_user_id_fkey [35mFOREIGN[m [35mKEY[m (user_id) [35mREFERENCES[m users (id) [35mNOT[m [35mVALID[m;
+
+                [90m2  [mValidate it in a separate migration
+                   [35mALTER[m [35mTABLE[m orders [35mVALIDATE[m [35mCONSTRAINT[m orders_user_id_fkey;
+
+[34m▌[m [1mdb/migrations/20260917101700_widen_user_name.sql[m
+
+  [33m▲[m [1;33mwarning[m [1mMR201[m Changing the type of [34m"users.name"[m may rewrite the table
+
+     [90m╭─[m db/migrations/20260917101700_widen_user_name.sql:1:1
+[90m   1[m [90m│[m [35mALTER[m [35mTABLE[m users [35mALTER[m [35mCOLUMN[m name [35mTYPE[m varchar(255);
+     [90m│[m [33m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[m
+     [90m│[m
+     [90m├─[m [90mlock    [mACCESS EXCLUSIVE on users · blocks reads and writes · rewrites
+     [90m│[m          the table
+     [90m├─[m [90mwhy     [mSome changes to this type only update the catalog, such as
+     [90m│[m          varchar to text or a longer varchar limit. Other changes rewrite
+     [90m│[m          every row of users under an ACCESS EXCLUSIVE lock. migrail can't
+     [90m│[m          see the current column type in this migration.
+     [90m╰─[m [32mfix     [mChange the type with expand and contract instead of rewriting
+                the table in place:
+
+                [90m1  [mAdd name_new with the new type
+                   [35mALTER[m [35mTABLE[m users [35mADD[m [35mCOLUMN[m name_new varchar(255);
+
+                [90m2  [mWrite to both columns and backfill name_new in batches
+
+                [90m3  [mRead from name_new, then drop name and rename name_new
+
+[34m▌[m [1mdb/migrations/20260917102000_rename_user_email.sql[m
+
+  [31m✖[m [1;31merror[m [1mMR302[m Renaming column [34m"users.email"[m breaks running code
+
+     [90m╭─[m db/migrations/20260917102000_rename_user_email.sql:1:33
+[90m   1[m [90m│[m [35mALTER[m [35mTABLE[m users [35mRENAME[m [35mCOLUMN[m email [35mTO[m email_address;
+     [90m│[m                                 [31m━━━━━[m
+     [90m│[m
+     [90m├─[m [90mlock    [mACCESS EXCLUSIVE on [34musers[m[90m · [mblocks reads and writes
+     [90m├─[m [90mwhy     [mDuring a rolling deploy, instances running the previous release
+     [90m│[m          still query "email". Those queries fail as soon as this
+     [90m│[m          migration runs.
+     [90m╰─[m [32mfix     [mRename in three deploys with expand and contract:
+                [90m1  [mAdd email_address, write to both columns and backfill it
+                [90m2  [mRead from email_address and stop writing email
+                [90m3  [mDrop email
+
+[34m▌[m [1mdb/migrations/20260917102100_index_user_email.sql[m
+
+  [31m✖[m [1;31merror[m [1mMR101[m Index creation blocks writes on [34m"users"[m
+
+     [90m╭─[m db/migrations/20260917102100_index_user_email.sql:1:1
+[90m   1[m [90m│[m [31m┃[m [35mCREATE[m [35mINDEX[m
+[90m   2[m [90m│[m [31m┃[m   idx_users_lower_email
+[90m   3[m [90m│[m [31m┃[m   [35mON[m users (lower(email))
+[90m   4[m [90m│[m [31m┃[m   [35mWHERE[m deleted_at [35mIS[m [35mNULL[m;
+     [90m│[m
+     [90m├─[m [90mlock    [mSHARE on [34musers[m[90m · [mblocks INSERT, UPDATE, DELETE
+     [90m├─[m [90mwhy     [mPostgres holds this lock until the whole index is built. INSERT,
+     [90m│[m          UPDATE and DELETE on the table wait for the entire build.
+     [90m╰─[m [32mfix     [mBuild the index concurrently, outside a transaction:
+
+                [35mCREATE[m [35mINDEX[m [35mCONCURRENTLY[m
+                  idx_users_lower_email
+                  [35mON[m users (lower(email))
+                  [35mWHERE[m deleted_at [35mIS[m [35mNULL[m;
+
+[90m────────────────────────────────────────────────────────────────────────────────[m
+  [31m✖ 4 errors[m  [33m▲ 1 warning[m  [90m● 0 notices[m                 [90m5 files · 7 stmts · 118ms[m
+  [1;31mFailing:[m 4 findings at or above "error"

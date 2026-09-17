@@ -1,0 +1,18 @@
+[90mmigrail [m[34m0.1.0[m[90m · postgres 16 · 1 file[m
+
+[34m▌[m [1mdb/migrations/20260917_x.sql[m
+
+  [31m✖[m [1;31merror[m [1mMR901[m Could not parse SQL
+
+     [90m╭─[m db/migrations/20260917_x.sql:3:1
+[90m   2[m [90m│[m [35mALTER[m [35mTABLE[m orders [35mADD[m [35mCOLUMN[m note text;
+[90m   3[m [90m│[m SELEC id [35mFROM[m orders;
+     [90m│[m [31m━━━━━[m [31msyntax error at or near "SELEC"[m
+     [90m│[m
+     [90m╰─[m [90mnote    [mOther statements in this file were still
+                analyzed.
+
+[90m────────────────────────────────────────────────────────────[m
+  [31m✖ 1 error[m  [90m▲ 0 warnings[m  [90m● 0 notices[m
+  [90m1 file · 2 stmts · 118ms[m
+  [1;31mFailing:[m 1 finding at or above "error"

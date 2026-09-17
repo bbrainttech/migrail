@@ -1,0 +1,24 @@
+  [38;2;230;230;234mCheck SQL migration files for statements that lock tables, rewrite them or break running code.[m
+
+  [38;2;230;230;234mPass one or more .sql files, or - to read SQL from standard input.[m
+
+  [1;38;2;124;140;255mUsage[m
+    [38;2;230;230;234mmigrail check <file.sql>... | - [flags][m
+
+  [1;38;2;124;140;255mFlags[m
+        [1;38;2;230;230;234m--ci[m                  [38;2;230;230;234mCI mode: no color, links or spinners unless forced[m
+        [1;38;2;230;230;234m--compact[m             [38;2;230;230;234mprint one line per finding[m
+        [1;38;2;230;230;234m--db-version string[m   [38;2;230;230;234mPostgreSQL major version in production, such as 16 (default: 12)[m
+        [1;38;2;230;230;234m--fail-on string[m      [38;2;230;230;234mexit with code 1 on findings at or above: error, warning,[m
+  [38;2;230;230;234m                            notice or never (default "error")[m
+    [1;38;2;230;230;234m-f, --format string[m       [38;2;230;230;234moutput format: pretty or json (default "pretty")[m
+    [1;38;2;230;230;234m-q, --quiet[m               [38;2;230;230;234mprint only findings and the summary[m
+    [1;38;2;230;230;234m-r, --rule strings[m        [38;2;230;230;234monly run these rules, by ID or slug[m
+        [1;38;2;230;230;234m--skip-rule strings[m   [38;2;230;230;234mskip these rules, by ID or slug[m
+    [1;38;2;230;230;234m-v, --verbose[m             [38;2;230;230;234mprint each phase with its timing[m
+
+  [1;38;2;124;140;255mGlobal flags[m
+        [1;38;2;230;230;234m--ascii[m           [38;2;230;230;234muse ASCII symbols instead of Unicode[m
+        [1;38;2;230;230;234m--color string[m    [38;2;230;230;234muse color: auto, always or never (default "auto")[m
+        [1;38;2;230;230;234m--no-hyperlinks[m   [38;2;230;230;234mdon't print clickable file links[m
+        [1;38;2;230;230;234m--theme string[m    [38;2;230;230;234mcolor theme: auto, dark, light or mono (default "auto")[m

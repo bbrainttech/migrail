@@ -69,6 +69,8 @@ type Finding struct {
 	Confidence  Confidence
 	Title       string
 	Why         string
+	Label       string
+	Note        string
 	Lock        *LockImpact
 	Evidence    []Evidence
 	Fix         *Fix

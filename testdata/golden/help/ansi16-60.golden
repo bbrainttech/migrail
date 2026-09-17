@@ -1,0 +1,35 @@
+ [1;34m███[m[90m╗[m   [1;34m███[m[90m╗[m[1;34m██[m[90m╗[m [1;34m██████[m[90m╗[m [1;34m██████[m[90m╗[m  [1;34m█████[m[90m╗[m [1;34m██[m[90m╗[m[1;34m██[m[90m╗[m
+ [1;34m████[m[90m╗[m [1;34m████[m[90m║[m[1;34m██[m[90m║[m[1;34m██[m[90m╔════╝[m [1;34m██[m[90m╔══[m[1;34m██[m[90m╗[m[1;34m██[m[90m╔══[m[1;34m██[m[90m╗[m[1;34m██[m[90m║[m[1;34m██[m[90m║[m
+ [1;34m██[m[90m╔[m[1;34m████[m[90m╔[m[1;34m██[m[90m║[m[1;34m██[m[90m║[m[1;34m██[m[90m║[m  [1;34m███[m[90m╗[m[1;34m██████[m[90m╔╝[m[1;34m███████[m[90m║[m[1;34m██[m[90m║[m[1;34m██[m[90m║[m
+ [1;34m██[m[90m║╚[m[1;34m██[m[90m╔╝[m[1;34m██[m[90m║[m[1;34m██[m[90m║[m[1;34m██[m[90m║[m   [1;34m██[m[90m║[m[1;34m██[m[90m╔══[m[1;34m██[m[90m╗[m[1;34m██[m[90m╔══[m[1;34m██[m[90m║[m[1;34m██[m[90m║[m[1;34m██[m[90m║[m
+ [1;34m██[m[90m║[m [90m╚═╝[m [1;34m██[m[90m║[m[1;34m██[m[90m║╚[m[1;34m██████[m[90m╔╝[m[1;34m██[m[90m║[m  [1;34m██[m[90m║[m[1;34m██[m[90m║[m  [1;34m██[m[90m║[m[1;34m██[m[90m║[m[1;34m███████[m[90m╗[m
+ [90m╚═╝[m     [90m╚═╝╚═╝[m [90m╚═════╝[m [90m╚═╝[m  [90m╚═╝╚═╝[m  [90m╚═╝╚═╝╚══════╝[m
+[90m═╪═══╪═══╪═══╪═══╪═══╪═══╪═══╪═══╪═══╪═══╪═══╪═══╪═[m
+ [90mcatch dangerous migrations[m
+ [90mbefore they reach production[m
+
+  migrail reads your migrations the way the database runs
+  them. It reports statements that lock tables, rewrite them
+  or break code that's still running, and shows how to fix
+  each one.
+
+  [1;34mUsage[m
+    migrail <command> [flags]
+
+  [1;34mCommands[m
+    [1mcheck       [mCheck SQL migrations for locks, rewrites and breaking changes
+    [1mexplain     [mExplain what a rule detects and how to fix it
+    [1mrules       [mList every rule with its severity and category
+    [1mversion     [mPrint the migrail version and build details
+
+  [1;34mFlags[m
+        [1m--ascii[m           use ASCII symbols instead
+                          of Unicode
+        [1m--color string[m    use color: auto, always or
+                          never (default "auto")
+        [1m--no-hyperlinks[m   don't print clickable file
+                          links
+        [1m--theme string[m    color theme: auto, dark,
+                          light or mono (default "auto")
+
+  [90mRun [mmigrail <command> --help[90m for details on a command.[m

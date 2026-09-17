@@ -1,0 +1,4 @@
+[34m⠹[m Extracting SQL  [90mdjango · 2 migrations  (python manage.py sqlmigrate)[m
+[32m✔[m Discovered       [90m3 migrations · goose           [m[90m   4ms[m
+[32m✔[m Extracted SQL    [90mstatic                         [m[90m   2ms[m
+[32m✔[m Analyzed         [90m14 statements · 6 rules        [m[90m  1.2s[m

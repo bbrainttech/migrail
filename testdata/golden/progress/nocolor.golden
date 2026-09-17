@@ -1,0 +1,4 @@
+⠹ Extracting SQL  django · 2 migrations  (python manage.py sqlmigrate)
+✔ Discovered       3 migrations · goose              4ms
+✔ Extracted SQL    static                            2ms
+✔ Analyzed         14 statements · 6 rules          1.2s

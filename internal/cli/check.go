@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -16,7 +17,11 @@ import (
 	pg "github.com/bbrainttech/migrail/internal/dialect/postgres"
 	"github.com/bbrainttech/migrail/internal/ir"
 	"github.com/bbrainttech/migrail/internal/report/jsonreport"
+	"github.com/bbrainttech/migrail/internal/report/pretty"
 	"github.com/bbrainttech/migrail/internal/rules"
+	"github.com/bbrainttech/migrail/internal/ui/components"
+	"github.com/bbrainttech/migrail/internal/ui/progress"
+	"github.com/bbrainttech/migrail/internal/ui/term"
 )
 
 const (
@@ -24,8 +29,11 @@ const (
 	stdinArgument = "-"
 	stdinPath     = "<stdin>"
 	formatJSON    = "json"
+	formatPretty  = "pretty"
 	failOnNever   = "never"
 )
+
+var formats = []string{formatPretty, formatJSON}
 
 var failOnLevels = []string{string(ir.SeverityError), string(ir.SeverityWarning), string(ir.SeverityNotice), failOnNever}
 
@@ -35,10 +43,15 @@ type checkOptions struct {
 	failOn    string
 	rules     []string
 	skipRules []string
+	compact   bool
+	quiet     bool
+	verbose   bool
+	ci        bool
+	ui        *uiFlags
 }
 
-func newCheckCommand() *cobra.Command {
-	opts := checkOptions{}
+func newCheckCommand(ui *uiFlags) *cobra.Command {
+	opts := checkOptions{ui: ui}
 
 	cmd := &cobra.Command{
 		Use:   "check <file.sql>... | -",
@@ -51,16 +64,21 @@ func newCheckCommand() *cobra.Command {
 	}
 
 	flags := cmd.Flags()
-	flags.StringVarP(&opts.format, "format", "f", formatJSON, "output format: json")
+	flags.StringVarP(&opts.format, "format", "f", formatPretty, "output format: pretty or json")
 	flags.StringVar(&opts.dbVersion, "db-version", "", "PostgreSQL major version in production, such as 16 (default: 12)")
 	flags.StringVar(&opts.failOn, "fail-on", string(ir.SeverityError), "exit with code 1 on findings at or above: error, warning, notice or never")
 	flags.StringSliceVarP(&opts.rules, "rule", "r", nil, "only run these rules, by ID or slug")
 	flags.StringSliceVar(&opts.skipRules, "skip-rule", nil, "skip these rules, by ID or slug")
+	flags.BoolVar(&opts.compact, "compact", false, "print one line per finding")
+	flags.BoolVarP(&opts.quiet, "quiet", "q", false, "print only findings and the summary")
+	flags.BoolVarP(&opts.verbose, "verbose", "v", false, "print each phase with its timing")
+	flags.BoolVar(&opts.ci, "ci", false, "CI mode: no color, links or spinners unless forced")
 
 	return cmd
 }
 
 func runCheck(ctx context.Context, cmd *cobra.Command, args []string, opts checkOptions) error {
+	started := time.Now()
 	dialect := pg.New()
 
 	dbVersion, err := validateCheckOptions(dialect, args, opts)
@@ -68,14 +86,29 @@ func runCheck(ctx context.Context, cmd *cobra.Command, args []string, opts check
 		return err
 	}
 
+	settings := opts.ui.settings(ciEnabled(opts.ci))
+	stderr := newDisplay(cmd.ErrOrStderr(), settings)
+	phases := progress.New(stderr.out, stderr.theme, progress.Options{
+		Animate: stderr.caps.TTY && !settings.CI && !opts.quiet,
+		Verbose: opts.verbose,
+	})
+
+	finish := phases.Start("Discovering", fmt.Sprintf("%d %s", len(args), components.Plural(len(args), "file", "files")))
+
 	migrations, err := loadMigrations(dialect, args, cmd.InOrStdin())
 	if err != nil {
+		finish.Abort()
+
 		return err
 	}
 
-	if opts.dbVersion == "" {
-		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "notice: assuming PostgreSQL %s. Set --db-version for advice that matches your version.\n", dbVersion)
+	finish.Done("Discovered", fmt.Sprintf("%d %s %s sql", len(migrations), components.Plural(len(migrations), "migration", "migrations"), stderr.theme.Symbols.Dot))
+
+	if opts.dbVersion == "" && !opts.quiet {
+		writeNotice(stderr, fmt.Sprintf("assuming PostgreSQL %s. Set --db-version for advice that matches your version.", dbVersion))
 	}
+
+	finish = phases.Start("Analyzing", fmt.Sprintf("%d rules", len(rules.All())))
 
 	result, err := analyze.Run(ctx, dialect, migrations, rules.All(), analyze.Options{
 		DBVersion: dbVersion,
@@ -83,6 +116,8 @@ func runCheck(ctx context.Context, cmd *cobra.Command, args []string, opts check
 		Skip:      opts.skipRules,
 	})
 	if err != nil {
+		finish.Abort()
+
 		if errors.Is(err, context.Canceled) {
 			return err
 		}
@@ -90,18 +125,61 @@ func runCheck(ctx context.Context, cmd *cobra.Command, args []string, opts check
 		return internalError(err)
 	}
 
-	err = jsonreport.Write(cmd.OutOrStdout(), jsonreport.Input{
+	finish.Done("Analyzed", fmt.Sprintf("%d %s %s %d rules", result.Statements, components.Plural(result.Statements, "statement", "statements"), stderr.theme.Symbols.Dot, result.RulesRun))
+
+	if err := writeCheckReport(cmd, opts, settings, dialect, dbVersion, migrations, result, time.Since(started)); err != nil {
+		return internalError(err)
+	}
+
+	return checkOutcome(result, opts.failOn, opts.format == formatPretty)
+}
+
+func writeCheckReport(
+	cmd *cobra.Command,
+	opts checkOptions,
+	settings term.Settings,
+	dialect *pg.Dialect,
+	dbVersion ir.Version,
+	migrations []*ir.Migration,
+	result analyze.Result,
+	elapsed time.Duration,
+) error {
+	if opts.format == formatJSON {
+		return jsonreport.Write(cmd.OutOrStdout(), jsonreport.Input{
+			ToolVersion: currentBuildInfo().Version,
+			Dialect:     dialect.Name(),
+			DBVersion:   dbVersion,
+			Migrations:  migrations,
+			Result:      result,
+		})
+	}
+
+	stdout := newDisplay(cmd.OutOrStdout(), settings)
+	options := pretty.Options{
+		Theme:   stdout.theme,
+		Width:   stdout.caps.ContentWidth(),
+		Compact: opts.compact || opts.quiet || stdout.caps.Compact(),
+	}
+
+	if stdout.caps.Hyperlinks {
+		options.Link = fileLink
+	}
+
+	return pretty.Write(stdout.out, pretty.Input{
 		ToolVersion: currentBuildInfo().Version,
 		Dialect:     dialect.Name(),
 		DBVersion:   dbVersion,
 		Migrations:  migrations,
 		Result:      result,
-	})
-	if err != nil {
-		return internalError(err)
-	}
+		FailOn:      opts.failOn,
+		Elapsed:     elapsed,
+		Highlight:   dialect.Highlight,
+	}, options)
+}
 
-	return checkOutcome(result, opts.failOn)
+func writeNotice(d display, message string) {
+	t := d.theme
+	_, _ = fmt.Fprintln(d.out, t.Notice.Render(t.Symbols.Notice)+" "+t.Strong(t.Notice).Render("notice")+" "+t.Fg.Render(message))
 }
 
 func validateCheckOptions(dialect *pg.Dialect, args []string, opts checkOptions) (ir.Version, error) {
@@ -109,8 +187,8 @@ func validateCheckOptions(dialect *pg.Dialect, args []string, opts checkOptions)
 		return ir.Version{}, errors.New("no migrations to check: pass SQL files, or - to read standard input")
 	}
 
-	if opts.format != formatJSON {
-		return ir.Version{}, fmt.Errorf("unsupported format %q: use json", opts.format)
+	if !slices.Contains(formats, opts.format) {
+		return ir.Version{}, fmt.Errorf("unsupported format %q: use %s", opts.format, strings.Join(formats, " or "))
 	}
 
 	if !slices.Contains(failOnLevels, opts.failOn) {
@@ -198,7 +276,7 @@ func readMigration(arg string, stdin io.Reader) (path, source string, err error)
 	return path, string(data), nil
 }
 
-func checkOutcome(result analyze.Result, failOn string) error {
+func checkOutcome(result analyze.Result, failOn string, summarized bool) error {
 	if len(result.RuleErrors) > 0 {
 		return internalError(fmt.Errorf("%d rule checks failed, so findings may be incomplete: %s", len(result.RuleErrors), result.RuleErrors[0].Message))
 	}
@@ -224,5 +302,5 @@ func checkOutcome(result analyze.Result, failOn string) error {
 		noun = "finding"
 	}
 
-	return &exitError{code: exitFindings, err: fmt.Errorf("%d %s at or above %q", failing, noun, failOn)}
+	return &exitError{code: exitFindings, err: fmt.Errorf("%d %s at or above %q", failing, noun, failOn), silent: summarized}
 }

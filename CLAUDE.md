@@ -7,7 +7,7 @@ migrail is a free, open source CLI that catches dangerous database migrations be
 ## Stack
 
 - Go (≥ 1.26.4), single binary, cgo enabled
-- CLI: cobra · Terminal UI: lipgloss, bubbletea, bubbles, huh, glamour
+- CLI: cobra · Terminal UI: lipgloss, colorprofile, bubbletea, bubbles, huh (markdown for `explain` is rendered in `internal/ui/markdown`, not glamour, to protect the startup budget)
 - Postgres parser: pganalyze/pg_query_go · Code parsing: tree-sitter
 - Live DB: pgx/v5 · Config: goccy/go-yaml + JSON schema
 - Tests: testcontainers-go, teatest, golden files · Release: goreleaser

@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+
+	"github.com/bbrainttech/migrail/internal/ui/components"
 )
 
 var (
@@ -38,13 +40,18 @@ type linkedValues struct {
 	Date    string
 }
 
-func newVersionCommand() *cobra.Command {
+func newVersionCommand(ui *uiFlags) *cobra.Command {
 	return &cobra.Command{
 		Use:   versionCommandName,
 		Short: "Print the migrail version and build details",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if err := currentBuildInfo().write(cmd.OutOrStdout()); err != nil {
+			d := newDisplay(cmd.OutOrStdout(), ui.settings(ciEnabled(false)))
+			if showBanner(d) {
+				_, _ = io.WriteString(d.out, components.Banner(d.theme, d.caps.Width)+"\n")
+			}
+
+			if err := currentBuildInfo().write(d.out); err != nil {
 				return internalError(fmt.Errorf("write version: %w", err))
 			}
 
@@ -155,4 +162,8 @@ func (b buildInfo) write(w io.Writer) error {
 	}
 
 	return nil
+}
+
+func showBanner(d display) bool {
+	return d.caps.TTY && !ciEnabled(false)
 }

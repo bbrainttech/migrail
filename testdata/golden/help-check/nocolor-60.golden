@@ -1,0 +1,41 @@
+  Check SQL migration files for statements that lock tables,
+  rewrite them or break running code.
+
+  Pass one or more .sql files, or - to read SQL from
+  standard input.
+
+  [1mUsage[m
+    migrail check <file.sql>... | - [flags]
+
+  [1mFlags[m
+        [1m--ci[m                  CI mode: no color,
+                              links or spinners
+                              unless forced
+        [1m--compact[m             print one line per finding
+        [1m--db-version string[m   PostgreSQL major
+                              version in production,
+                              such as 16 (default: 12)
+        [1m--fail-on string[m      exit with code 1 on
+                              findings at or above:
+                              error, warning, notice
+                              or never (default "error")
+    [1m-f, --format string[m       output format: pretty
+                              or json (default "pretty")
+    [1m-q, --quiet[m               print only findings
+                              and the summary
+    [1m-r, --rule strings[m        only run these rules,
+                              by ID or slug
+        [1m--skip-rule strings[m   skip these rules, by
+                              ID or slug
+    [1m-v, --verbose[m             print each phase with
+                              its timing
+
+  [1mGlobal flags[m
+        [1m--ascii[m           use ASCII symbols instead
+                          of Unicode
+        [1m--color string[m    use color: auto, always or
+                          never (default "auto")
+        [1m--no-hyperlinks[m   don't print clickable file
+                          links
+        [1m--theme string[m    color theme: auto, dark,
+                          light or mono (default "auto")

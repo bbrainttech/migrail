@@ -1,0 +1,8 @@
+  [1;38;2;139;141;152mID     Rule                         Severity  Category       Postgres[m
+  [1;38;2;230;230;234mMR101[m  [38;2;230;230;234mcreate-index-non-concurrent[m  [38;2;255;107;129merror   [m  [38;2;230;230;234mlocking      [m  [38;2;230;230;234mall[m
+  [1;38;2;230;230;234mMR104[m  [38;2;230;230;234madd-foreign-key-validating [m  [38;2;255;107;129merror   [m  [38;2;230;230;234mlocking      [m  [38;2;230;230;234mall[m
+  [1;38;2;230;230;234mMR107[m  [38;2;230;230;234mset-not-null-scan          [m  [38;2;255;107;129merror   [m  [38;2;230;230;234mlocking      [m  [38;2;230;230;234mall[m
+  [1;38;2;230;230;234mMR201[m  [38;2;230;230;234malter-column-type-rewrite  [m  [38;2;255;107;129merror   [m  [38;2;230;230;234mrewrite      [m  [38;2;230;230;234mall[m
+  [1;38;2;230;230;234mMR302[m  [38;2;230;230;234mrename-column              [m  [38;2;255;107;129merror   [m  [38;2;230;230;234mcompatibility[m  [38;2;230;230;234mall[m
+  [1;38;2;230;230;234mMR901[m  [38;2;230;230;234mparse-error                [m  [38;2;255;107;129merror   [m  [38;2;230;230;234mdiagnostic   [m  [38;2;230;230;234mall[m
+  [38;2;139;141;152m6 rules · 6 enabled · run [m[38;2;230;230;234mmigrail explain <ID>[m

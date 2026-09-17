@@ -1,0 +1,30 @@
+ ###    ### ##  ######  ######   #####  ## ##
+ ####  #### ## ##       ##   ## ##   ## ## ##
+ ## #### ## ## ##   ### ######  ####### ## ##
+ ##  ##  ## ## ##    ## ##   ## ##   ## ## ##
+ ##      ## ##  ######  ##   ## ##   ## ## #######
+=+===+===+===+===+===+===+===+===+===+===+===+===+=
+ catch dangerous migrations
+ before they reach production
+
+  migrail reads your migrations the way the database runs them. It reports
+  statements that lock tables, rewrite them or break code that's still running,
+  and shows how to fix each one.
+
+  Usage
+    migrail <command> [flags]
+
+  Commands
+    check       Check SQL migrations for locks, rewrites and breaking changes
+    explain     Explain what a rule detects and how to fix it
+    rules       List every rule with its severity and category
+    version     Print the migrail version and build details
+
+  Flags
+        --ascii           use ASCII symbols instead of Unicode
+        --color string    use color: auto, always or never (default "auto")
+        --no-hyperlinks   don't print clickable file links
+        --theme string    color theme: auto, dark, light or mono
+                          (default "auto")
+
+  Run migrail <command> --help for details on a command.

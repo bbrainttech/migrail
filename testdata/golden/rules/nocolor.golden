@@ -1,0 +1,8 @@
+  [1mID     Rule                         Severity  Category       Postgres[m
+  [1mMR101[m  create-index-non-concurrent  error     locking        all
+  [1mMR104[m  add-foreign-key-validating   error     locking        all
+  [1mMR107[m  set-not-null-scan            error     locking        all
+  [1mMR201[m  alter-column-type-rewrite    error     rewrite        all
+  [1mMR302[m  rename-column                error     compatibility  all
+  [1mMR901[m  parse-error                  error     diagnostic     all
+  6 rules · 6 enabled · run migrail explain <ID>
