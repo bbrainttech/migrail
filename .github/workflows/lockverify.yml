@@ -1,0 +1,40 @@
+name: lockverify
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  push:
+    branches: [main, staging]
+    paths:
+      - internal/dialect/postgres/lockmodel/**
+      - tools/lockverify/**
+  pull_request:
+    paths:
+      - internal/dialect/postgres/lockmodel/**
+      - tools/lockverify/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        postgres: ["12", "13", "14", "15", "16", "17", "18"]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Verify lock model against PostgreSQL ${{ matrix.postgres }}
+        env:
+          CGO_ENABLED: "1"
+        run: go run ./tools/lockverify -versions ${{ matrix.postgres }} -output lockmodel.verified.${{ matrix.postgres }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lockmodel-verified-${{ matrix.postgres }}
+          path: lockmodel.verified.${{ matrix.postgres }}.json

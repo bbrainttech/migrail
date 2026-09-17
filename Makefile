@@ -3,6 +3,8 @@ BIN := bin/migrail
 
 export CGO_ENABLED := 1
 
+PG_VERSIONS ?= 12,13,14,15,16,17,18
+
 ifeq ($(shell uname -s),Darwin)
 ifeq ($(origin SDKROOT),undefined)
 MACOS_SDKROOT := $(shell tools/macos-sdkroot.sh)
@@ -15,7 +17,7 @@ endif
 endif
 endif
 
-.PHONY: build test lint fmt tidy golden-update snapshot clean
+.PHONY: build test lint fmt tidy golden-update lockverify snapshot clean
 
 build:
 	$(GO) build -trimpath -o $(BIN) ./cmd/migrail
@@ -25,6 +27,9 @@ test:
 
 golden-update:
 	UPDATE_GOLDEN=1 $(GO) test ./...
+
+lockverify:
+	$(GO) run ./tools/lockverify -versions $(PG_VERSIONS)
 
 lint:
 	golangci-lint run ./...
