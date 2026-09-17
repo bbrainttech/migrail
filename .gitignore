@@ -1,0 +1,80 @@
+# Build output
+/bin/
+/dist/
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Go
+go.work
+go.work.sum
+coverage.*
+*.coverprofile
+*.pprof
+cpu.prof
+mem.prof
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Local caches and reports
+.migrail-cache/
+*.sarif
+report.json
+.task/
+
+# Fetched real-world migration corpus
+/testdata/corpus/*
+!/testdata/corpus/fetch.sh
+
+# Framework test projects
+/testdata/projects/**/node_modules/
+/testdata/projects/**/vendor/
+/testdata/projects/**/__pycache__/
+/testdata/projects/**/.venv/
+/testdata/projects/**/log/
+/testdata/projects/**/tmp/
+/testdata/projects/**/bin/Debug/
+/testdata/projects/**/bin/Release/
+/testdata/projects/**/obj/
+/testdata/projects/**/db/*.sqlite3
+
+# Packaging
+/packaging/npm/**/node_modules/
+/packaging/npm/**/bin/
+/packaging/pypi/**/build/
+/packaging/pypi/**/dist/
+/packaging/pypi/**/*.egg-info/
+/packaging/rubygems/**/pkg/
+/packaging/composer/**/vendor/
+/packaging/nuget/**/bin/
+/packaging/nuget/**/obj/
+
+# Docs site
+/docs/node_modules/
+/docs/dist/
+/docs/.astro/
+/docs/.vitepress/cache/
+/docs/.vitepress/dist/
+
+# Python / Node tooling
+__pycache__/
+*.py[cod]
+node_modules/
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# Editors and OS
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db

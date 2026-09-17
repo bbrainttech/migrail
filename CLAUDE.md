@@ -83,6 +83,23 @@ Voice: plain, precise and calm. Say what happens, where, why it's dangerous and 
 - **No telemetry.** The only network call is the opt-out update check, never in CI.
 - **Secrets never appear** in output, logs or debug traces. Redact database URLs everywhere.
 
+## Environment variables
+
+Each time you add an env var:
+1. Add the key to `.env.example` first, with a very brief comment above it saying what it's for. Use an empty or safe placeholder value, never a real secret.
+2. Then add it to `.env.local` with the real value.
+
+`.env.example` is committed. `.env.local` and every other `.env*` file are gitignored.
+
+```
+# Read-only Postgres URL used by live database integration tests
+MIGRAIL_TEST_DATABASE_URL=
+```
+
+## README
+
+`README.md` grows with the project. When a feature lands, update the README in the same change: move it from planned to available, add real install and usage commands, and tick the roadmap. Never document something that doesn't work yet as if it does.
+
 ## Workflow
 
 1. Read the milestone and sections involved in `PLAN.md`.
