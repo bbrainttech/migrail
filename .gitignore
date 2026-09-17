@@ -24,6 +24,8 @@ mem.prof
 
 # Local caches and reports
 .migrail-cache/
+.zig-cache/
+zig-out/
 *.sarif
 report.json
 .task/
