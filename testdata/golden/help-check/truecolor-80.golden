@@ -1,10 +1,12 @@
-  [38;2;230;230;234mCheck SQL migration files for statements that lock tables, rewrite them or[m
-  [38;2;230;230;234mbreak running code.[m
+  [38;2;230;230;234mCheck migrations for statements that lock tables, rewrite them or break[m
+  [38;2;230;230;234mrunning code.[m
 
-  [38;2;230;230;234mPass one or more .sql files, or - to read SQL from standard input.[m
+  [38;2;230;230;234mWith no arguments, migrail finds the migrations in the repository and detects[m
+  [38;2;230;230;234mthe migration tool. Pass migration files or directories to check only those,[m
+  [38;2;230;230;234mor - to read SQL from standard input.[m
 
   [1;38;2;124;140;255mUsage[m
-    [38;2;230;230;234mmigrail check <file.sql>... | - [flags][m
+    [38;2;230;230;234mmigrail check [path]... | - [flags][m
 
   [1;38;2;124;140;255mFlags[m
         [1;38;2;230;230;234m--ci[m                  [38;2;230;230;234mCI mode: no color, links or spinners[m
@@ -12,11 +14,16 @@
         [1;38;2;230;230;234m--compact[m             [38;2;230;230;234mprint one line per finding[m
         [1;38;2;230;230;234m--db-version string[m   [38;2;230;230;234mPostgreSQL major version in production,[m
   [38;2;230;230;234m                            such as 16 (default: 12)[m
+    [1;38;2;230;230;234m-d, --dir string[m          [38;2;230;230;234mproject root to search for migrations[m
+  [38;2;230;230;234m                            (default: the repository root)[m
         [1;38;2;230;230;234m--fail-on string[m      [38;2;230;230;234mexit with code 1 on findings at or above:[m
   [38;2;230;230;234m                            error, warning, notice or never (default[m
   [38;2;230;230;234m                            "error")[m
     [1;38;2;230;230;234m-f, --format string[m       [38;2;230;230;234moutput format: pretty or json (default[m
   [38;2;230;230;234m                            "pretty")[m
+        [1;38;2;230;230;234m--framework string[m    [38;2;230;230;234mmigration tool to use instead of detecting[m
+  [38;2;230;230;234m                            it: sqitch, atlas, prisma, drizzle, goose,[m
+  [38;2;230;230;234m                            dbmate, golang-migrate, flyway, sql[m
     [1;38;2;230;230;234m-q, --quiet[m               [38;2;230;230;234mprint only findings and the summary[m
     [1;38;2;230;230;234m-r, --rule strings[m        [38;2;230;230;234monly run these rules, by ID or slug[m
         [1;38;2;230;230;234m--skip-rule strings[m   [38;2;230;230;234mskip these rules, by ID or slug[m

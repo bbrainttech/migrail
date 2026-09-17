@@ -17,6 +17,7 @@ const (
 	fixtures   = "../../testdata/sql"
 	goldenDir  = "../../testdata/golden/json"
 	mr101Basic = fixtures + "/MR101/bad/basic.sql"
+	projects   = "../../testdata/projects"
 )
 
 type checkRun struct {
@@ -63,13 +64,17 @@ func TestCheckExitCodes(t *testing.T) {
 		{name: "warning at threshold", args: []string{"check", "--fail-on", "warning", fixtures + "/MR201/bad/to_varchar.sql"}, wantCode: exitFindings},
 		{name: "skip rule", args: []string{"check", "--skip-rule", "create-index-non-concurrent", mr101Basic}, wantCode: exitOK},
 		{name: "stdin", stdin: "ALTER TABLE users RENAME COLUMN email TO mail;", args: []string{"check", "-"}, wantCode: exitFindings},
-		{name: "no arguments", args: []string{"check"}, wantCode: exitUsage, wantStderr: "No migrations to check"},
+		{name: "no migrations under dir", args: []string{"check", "--dir", fixtures + "/MR101"}, wantCode: exitUsage, wantStderr: "No migrations found"},
+		{name: "goose wraps migrations in a transaction", args: []string{"check", "-f", "json", projects + "/goose"}, wantCode: exitFindings},
+		{name: "tables created earlier in the change set are new", args: []string{"check", "-f", "json", "--dir", projects + "/plain"}, wantCode: exitOK},
+		{name: "forced framework", args: []string{"check", "-f", "json", "--framework", "goose", projects + "/goose/migrations/00003_no_tx.sql"}, wantCode: exitOK},
+		{name: "unknown framework", args: []string{"check", "--framework", "rails", mr101Basic}, wantCode: exitUsage, wantStderr: `Unknown --framework "rails"`},
 		{name: "unsupported format", args: []string{"check", "-f", "sarif", mr101Basic}, wantCode: exitUsage, wantStderr: `Unsupported format "sarif"`},
 		{name: "invalid fail-on", args: []string{"check", "--fail-on", "fatal", mr101Basic}, wantCode: exitUsage},
 		{name: "unsupported version", args: []string{"check", "--db-version", "11", mr101Basic}, wantCode: exitUsage, wantStderr: "PostgreSQL 12 to 18"},
 		{name: "invalid version", args: []string{"check", "--db-version", "latest", mr101Basic}, wantCode: exitUsage},
 		{name: "missing file", args: []string{"check", "nope.sql"}, wantCode: exitUsage, wantStderr: "Read migration nope.sql"},
-		{name: "directory", args: []string{"check", fixtures}, wantCode: exitUsage, wantStderr: "is a directory"},
+		{name: "directory without migrations", args: []string{"check", fixtures}, wantCode: exitUsage, wantStderr: "No migrations found"},
 		{name: "stdin mixed with files", args: []string{"check", "-", mr101Basic}, wantCode: exitUsage},
 	}
 

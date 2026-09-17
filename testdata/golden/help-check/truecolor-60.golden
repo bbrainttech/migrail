@@ -1,11 +1,13 @@
-  [38;2;230;230;234mCheck SQL migration files for statements that lock tables,[m
-  [38;2;230;230;234mrewrite them or break running code.[m
+  [38;2;230;230;234mCheck migrations for statements that lock tables, rewrite[m
+  [38;2;230;230;234mthem or break running code.[m
 
-  [38;2;230;230;234mPass one or more .sql files, or - to read SQL from[m
-  [38;2;230;230;234mstandard input.[m
+  [38;2;230;230;234mWith no arguments, migrail finds the migrations in the[m
+  [38;2;230;230;234mrepository and detects the migration tool. Pass migration[m
+  [38;2;230;230;234mfiles or directories to check only those, or - to read SQL[m
+  [38;2;230;230;234mfrom standard input.[m
 
   [1;38;2;124;140;255mUsage[m
-    [38;2;230;230;234mmigrail check <file.sql>... | - [flags][m
+    [38;2;230;230;234mmigrail check [path]... | - [flags][m
 
   [1;38;2;124;140;255mFlags[m
         [1;38;2;230;230;234m--ci[m                  [38;2;230;230;234mCI mode: no color,[m
@@ -15,12 +17,22 @@
         [1;38;2;230;230;234m--db-version string[m   [38;2;230;230;234mPostgreSQL major[m
   [38;2;230;230;234m                            version in production,[m
   [38;2;230;230;234m                            such as 16 (default: 12)[m
+    [1;38;2;230;230;234m-d, --dir string[m          [38;2;230;230;234mproject root to search[m
+  [38;2;230;230;234m                            for migrations[m
+  [38;2;230;230;234m                            (default: the[m
+  [38;2;230;230;234m                            repository root)[m
         [1;38;2;230;230;234m--fail-on string[m      [38;2;230;230;234mexit with code 1 on[m
   [38;2;230;230;234m                            findings at or above:[m
   [38;2;230;230;234m                            error, warning, notice[m
   [38;2;230;230;234m                            or never (default "error")[m
     [1;38;2;230;230;234m-f, --format string[m       [38;2;230;230;234moutput format: pretty[m
   [38;2;230;230;234m                            or json (default "pretty")[m
+        [1;38;2;230;230;234m--framework string[m    [38;2;230;230;234mmigration tool to use[m
+  [38;2;230;230;234m                            instead of detecting[m
+  [38;2;230;230;234m                            it: sqitch, atlas,[m
+  [38;2;230;230;234m                            prisma, drizzle,[m
+  [38;2;230;230;234m                            goose, dbmate,[m
+  [38;2;230;230;234m                            golang-migrate, flyway, sql[m
     [1;38;2;230;230;234m-q, --quiet[m               [38;2;230;230;234mprint only findings[m
   [38;2;230;230;234m                            and the summary[m
     [1;38;2;230;230;234m-r, --rule strings[m        [38;2;230;230;234monly run these rules,[m

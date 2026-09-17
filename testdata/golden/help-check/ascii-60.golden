@@ -1,11 +1,13 @@
-  Check SQL migration files for statements that lock tables,
-  rewrite them or break running code.
+  Check migrations for statements that lock tables, rewrite
+  them or break running code.
 
-  Pass one or more .sql files, or - to read SQL from
-  standard input.
+  With no arguments, migrail finds the migrations in the
+  repository and detects the migration tool. Pass migration
+  files or directories to check only those, or - to read SQL
+  from standard input.
 
   Usage
-    migrail check <file.sql>... | - [flags]
+    migrail check [path]... | - [flags]
 
   Flags
         --ci                  CI mode: no color,
@@ -15,12 +17,22 @@
         --db-version string   PostgreSQL major
                               version in production,
                               such as 16 (default: 12)
+    -d, --dir string          project root to search
+                              for migrations
+                              (default: the
+                              repository root)
         --fail-on string      exit with code 1 on
                               findings at or above:
                               error, warning, notice
                               or never (default "error")
     -f, --format string       output format: pretty
                               or json (default "pretty")
+        --framework string    migration tool to use
+                              instead of detecting
+                              it: sqitch, atlas,
+                              prisma, drizzle,
+                              goose, dbmate,
+                              golang-migrate, flyway, sql
     -q, --quiet               print only findings
                               and the summary
     -r, --rule strings        only run these rules,

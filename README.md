@@ -67,7 +67,7 @@ migrail is built around four commitments:
 
 | Migration tool | Status |
 |---|---|
-| golang-migrate, goose, Atlas, Flyway, Prisma, Drizzle, dbmate, sqitch | Planned for v0.1 |
+| golang-migrate, goose, Atlas, Flyway, Prisma, Drizzle, dbmate, sqitch, plain `.sql` directories | Available from source |
 | Django, Alembic, Rails, Laravel, EF Core, Knex, TypeORM, Sequelize, Liquibase | Planned for v0.2 |
 | Any other tool, through capture mode | Planned for v0.2 |
 
@@ -85,11 +85,20 @@ make build
 
 ## Usage
 
-Check one or more SQL migration files:
+From anywhere in your repository, find the migrations, detect the migration tool and check them:
+
+```
+./bin/migrail check --db-version 16
+```
+
+Check specific files or directories:
 
 ```
 ./bin/migrail check db/migrations/20260917101500_add_orders_status.sql --db-version 16
+./bin/migrail check services/billing/migrations
 ```
+
+migrail reads each tool's own conventions: goose `-- +goose Up` sections and `NO TRANSACTION`, dbmate `-- migrate:up` and `transaction:false`, Atlas `atlas:txmode`, the Prisma, Drizzle and sqitch plan order, Flyway versions and golang-migrate `.up.sql` files.
 
 Read SQL from standard input:
 
@@ -111,6 +120,8 @@ Learn what a rule detects and how to fix it, or list every rule:
 | `-r`, `--rule` | Only run these rules, by ID or slug. |
 | `--skip-rule` | Skip these rules, by ID or slug. |
 | `-f`, `--format` | `pretty` (default) or `json`. |
+| `-d`, `--dir` | Project root to search for migrations. Defaults to the repository root. |
+| `--framework` | Use this migration tool instead of detecting it: `goose`, `golang-migrate`, `atlas`, `flyway`, `prisma`, `drizzle`, `dbmate`, `sqitch` or `sql`. |
 | `--compact` | One line per finding. |
 | `-q`, `--quiet` | Only findings and the summary. |
 | `-v`, `--verbose` | Print each phase with its timing. |

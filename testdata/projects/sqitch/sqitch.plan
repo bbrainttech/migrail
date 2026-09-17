@@ -1,0 +1,6 @@
+%syntax-version=1.0.0
+%project=shop
+
+orders 2026-09-17T10:00:00Z Dev <dev@example.com> # add orders
+orders_status [orders] 2026-09-17T11:00:00Z Dev <dev@example.com>
+@v1.0 2026-09-17T12:00:00Z Dev <dev@example.com>

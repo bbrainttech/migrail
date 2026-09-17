@@ -4,9 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
-	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -15,6 +12,7 @@ import (
 
 	"github.com/bbrainttech/migrail/internal/analyze"
 	pg "github.com/bbrainttech/migrail/internal/dialect/postgres"
+	"github.com/bbrainttech/migrail/internal/discovery"
 	"github.com/bbrainttech/migrail/internal/ir"
 	"github.com/bbrainttech/migrail/internal/report/jsonreport"
 	"github.com/bbrainttech/migrail/internal/report/pretty"
@@ -43,6 +41,8 @@ type checkOptions struct {
 	failOn    string
 	rules     []string
 	skipRules []string
+	framework string
+	dir       string
 	compact   bool
 	quiet     bool
 	verbose   bool
@@ -54,10 +54,11 @@ func newCheckCommand(ui *uiFlags) *cobra.Command {
 	opts := checkOptions{ui: ui}
 
 	cmd := &cobra.Command{
-		Use:   "check <file.sql>... | -",
+		Use:   "check [path]... | -",
 		Short: "Check SQL migrations for locks, rewrites and breaking changes",
-		Long: "Check SQL migration files for statements that lock tables, rewrite them or break running code.\n\n" +
-			"Pass one or more .sql files, or - to read SQL from standard input.",
+		Long: "Check migrations for statements that lock tables, rewrite them or break running code.\n\n" +
+			"With no arguments, migrail finds the migrations in the repository and detects the migration tool. " +
+			"Pass migration files or directories to check only those, or - to read SQL from standard input.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runCheck(cmd.Context(), cmd, args, opts)
 		},
@@ -69,6 +70,8 @@ func newCheckCommand(ui *uiFlags) *cobra.Command {
 	flags.StringVar(&opts.failOn, "fail-on", string(ir.SeverityError), "exit with code 1 on findings at or above: error, warning, notice or never")
 	flags.StringSliceVarP(&opts.rules, "rule", "r", nil, "only run these rules, by ID or slug")
 	flags.StringSliceVar(&opts.skipRules, "skip-rule", nil, "skip these rules, by ID or slug")
+	flags.StringVar(&opts.framework, "framework", "", "migration tool to use instead of detecting it: "+strings.Join(discovery.AdapterNames(), ", "))
+	flags.StringVarP(&opts.dir, "dir", "d", "", "project root to search for migrations (default: the repository root)")
 	flags.BoolVar(&opts.compact, "compact", false, "print one line per finding")
 	flags.BoolVarP(&opts.quiet, "quiet", "q", false, "print only findings and the summary")
 	flags.BoolVarP(&opts.verbose, "verbose", "v", false, "print each phase with its timing")
@@ -81,7 +84,7 @@ func runCheck(ctx context.Context, cmd *cobra.Command, args []string, opts check
 	started := time.Now()
 	dialect := pg.New()
 
-	dbVersion, err := validateCheckOptions(dialect, args, opts)
+	dbVersion, err := validateCheckOptions(dialect, opts)
 	if err != nil {
 		return err
 	}
@@ -95,7 +98,7 @@ func runCheck(ctx context.Context, cmd *cobra.Command, args []string, opts check
 
 	finish := phases.Start("Discovering", fmt.Sprintf("%d %s", len(args), components.Plural(len(args), "file", "files")))
 
-	migrations, err := loadMigrations(dialect, args, cmd.InOrStdin())
+	migrations, err := loadMigrations(ctx, dialect, args, opts, cmd.InOrStdin())
 	if err != nil {
 		finish.Abort()
 
@@ -182,9 +185,9 @@ func writeNotice(d display, message string) {
 	_, _ = fmt.Fprintln(d.out, t.Notice.Render(t.Symbols.Notice)+" "+t.Strong(t.Notice).Render("notice")+" "+t.Fg.Render(message))
 }
 
-func validateCheckOptions(dialect *pg.Dialect, args []string, opts checkOptions) (ir.Version, error) {
-	if len(args) == 0 {
-		return ir.Version{}, errors.New("no migrations to check: pass SQL files, or - to read standard input")
+func validateCheckOptions(dialect *pg.Dialect, opts checkOptions) (ir.Version, error) {
+	if _, ok := discovery.AdapterNamed(opts.framework); opts.framework != "" && !ok {
+		return ir.Version{}, fmt.Errorf("unknown --framework %q: use %s", opts.framework, strings.Join(discovery.AdapterNames(), ", "))
 	}
 
 	if !slices.Contains(formats, opts.format) {
@@ -210,70 +213,6 @@ func validateCheckOptions(dialect *pg.Dialect, args []string, opts checkOptions)
 	}
 
 	return version, nil
-}
-
-func loadMigrations(dialect *pg.Dialect, args []string, stdin io.Reader) ([]*ir.Migration, error) {
-	if slices.Contains(args, stdinArgument) && len(args) > 1 {
-		return nil, errors.New("- reads standard input and can't be combined with file paths")
-	}
-
-	migrations := make([]*ir.Migration, 0, len(args))
-
-	for _, arg := range args {
-		path, source, err := readMigration(arg, stdin)
-		if err != nil {
-			return nil, err
-		}
-
-		statements, err := dialect.Parse(source)
-		if err != nil {
-			return nil, internalError(fmt.Errorf("parse %s: %w", path, err))
-		}
-
-		migrations = append(migrations, &ir.Migration{
-			ID:          "sql:" + path,
-			Name:        strings.TrimSuffix(filepath.Base(path), filepath.Ext(path)),
-			Framework:   "sql",
-			SourcePath:  path,
-			Source:      source,
-			Direction:   ir.DirectionUp,
-			TxMode:      ir.TxModeNonTransactional,
-			Statements:  statements,
-			ChangeState: ir.ChangeStateNew,
-			Origin:      ir.OriginRawSQL,
-		})
-	}
-
-	return migrations, nil
-}
-
-func readMigration(arg string, stdin io.Reader) (path, source string, err error) {
-	if arg == stdinArgument {
-		data, err := io.ReadAll(stdin)
-		if err != nil {
-			return "", "", internalError(fmt.Errorf("read standard input: %w", err))
-		}
-
-		return stdinPath, string(data), nil
-	}
-
-	path = filepath.ToSlash(filepath.Clean(arg))
-
-	info, err := os.Stat(filepath.FromSlash(path))
-	if err != nil {
-		return "", "", fmt.Errorf("read migration %s: %w", path, err)
-	}
-
-	if info.IsDir() {
-		return "", "", fmt.Errorf("%s is a directory: pass the SQL files to check", path)
-	}
-
-	data, err := os.ReadFile(filepath.FromSlash(path))
-	if err != nil {
-		return "", "", fmt.Errorf("read migration %s: %w", path, err)
-	}
-
-	return path, string(data), nil
 }
 
 func checkOutcome(result analyze.Result, failOn string, summarized bool) error {
