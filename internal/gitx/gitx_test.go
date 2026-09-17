@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/bbrainttech/migrail/internal/ir"
@@ -74,12 +75,7 @@ func TestChangesSinceMergeBase(t *testing.T) {
 		t.Fatalf("ResolveBase() = %q, %v, want main", base, err)
 	}
 
-	mergeBase, err := repo.MergeBase(ctx, base)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	changes, err := repo.Changes(ctx, mergeBase)
+	changes, err := repo.Changes(ctx, base)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,6 +98,16 @@ func TestChangesSinceMergeBase(t *testing.T) {
 
 	if _, err := repo.ResolveBase(ctx, "does-not-exist", nil); err == nil {
 		t.Error("ResolveBase() with an unknown explicit base should fail")
+	}
+
+	mergeBase, err := repo.MergeBase(ctx, base)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fallback, err := repo.diffSinceMergeBase(ctx, base)
+	if err != nil || !strings.Contains(fallback, "db/0002_edited.sql") || mergeBase == "" {
+		t.Errorf("diffSinceMergeBase() = %q, %v", fallback, err)
 	}
 
 	if relative, ok := repo.Relative(filepath.Join(dir, "db", "0001_applied.sql")); !ok || relative != "db/0001_applied.sql" {

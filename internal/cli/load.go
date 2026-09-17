@@ -76,20 +76,15 @@ func loadStdin(dialect *pg.Dialect, stdin io.Reader) ([]*ir.Migration, error) {
 		return nil, internalError(fmt.Errorf("read standard input: %w", err))
 	}
 
-	statements, err := dialect.Parse(string(data))
-	if err != nil {
-		return nil, internalError(fmt.Errorf("parse standard input: %w", err))
-	}
-
 	return []*ir.Migration{{
 		ID:          "sql:" + stdinPath,
 		Name:        stdinPath,
 		Framework:   sqlfiles.Adapter{}.Name(),
 		SourcePath:  stdinPath,
 		Source:      string(data),
+		SQL:         string(data),
 		Direction:   ir.DirectionUp,
 		TxMode:      ir.TxModeNonTransactional,
-		Statements:  statements,
 		ChangeState: ir.ChangeStateNew,
 		Origin:      ir.OriginRawSQL,
 	}}, nil
@@ -215,7 +210,7 @@ func (l loader) load(root string, adapter adapters.Adapter, file adapters.File) 
 
 	l.seen[display] = true
 
-	migration, err := discovery.Load(root, adapter, file, l.dialect.Parse)
+	migration, err := discovery.Read(root, adapter, file)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil, fmt.Errorf("read migration %s: %w", display, os.ErrNotExist)

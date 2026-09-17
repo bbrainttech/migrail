@@ -34,6 +34,11 @@ func Open(ctx context.Context, dir string) (Repo, bool) {
 }
 
 func (r Repo) ResolveBase(ctx context.Context, explicit string, env map[string]string) (string, error) {
+	refs, err := r.refs(ctx)
+	if err != nil {
+		return "", err
+	}
+
 	candidates := []string{}
 
 	switch {
@@ -47,24 +52,50 @@ func (r Repo) ResolveBase(ctx context.Context, explicit string, env map[string]s
 	}
 
 	if explicit == "" {
-		if head, err := run(ctx, r.Root, "symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"); err == nil {
-			candidates = append(candidates, strings.TrimSpace(head))
+		if target := refs["origin/HEAD"]; target != "" {
+			candidates = append(candidates, target)
 		}
 
 		candidates = append(candidates, "origin/main", "origin/master", "main", "master")
 	}
 
 	for _, candidate := range candidates {
-		if _, err := run(ctx, r.Root, "rev-parse", "--verify", "--quiet", candidate+"^{commit}"); err == nil {
+		if _, ok := refs[candidate]; ok {
 			return candidate, nil
 		}
 	}
 
 	if explicit != "" {
+		if _, err := run(ctx, r.Root, "rev-parse", "--verify", "--quiet", explicit+"^{commit}"); err == nil {
+			return explicit, nil
+		}
+
 		return "", fmt.Errorf("git base %q not found: %w", explicit, ErrNoBase)
 	}
 
 	return "", ErrNoBase
+}
+
+func (r Repo) refs(ctx context.Context) (map[string]string, error) {
+	out, err := run(ctx, r.Root, "for-each-ref", "--format=%(refname:short)%09%(symref:short)", "refs/heads", "refs/remotes")
+	if err != nil {
+		return nil, fmt.Errorf("list branches: %w", err)
+	}
+
+	refs := map[string]string{}
+
+	for line := range strings.SplitSeq(strings.TrimSpace(out), "\n") {
+		name, target, _ := strings.Cut(line, "\t")
+		if name == "origin" && target != "" {
+			name = "origin/HEAD"
+		}
+
+		if name != "" {
+			refs[name] = target
+		}
+	}
+
+	return refs, nil
 }
 
 func (r Repo) MergeBase(ctx context.Context, base string) (string, error) {
@@ -76,13 +107,53 @@ func (r Repo) MergeBase(ctx context.Context, base string) (string, error) {
 	return strings.TrimSpace(out), nil
 }
 
-func (r Repo) Changes(ctx context.Context, mergeBase string) (map[string]ir.ChangeState, error) {
-	changes := map[string]ir.ChangeState{}
+func (r Repo) Changes(ctx context.Context, base string) (map[string]ir.ChangeState, error) {
+	type output struct {
+		text string
+		err  error
+	}
+
+	untrackedDone := make(chan output, 1)
+
+	go func() {
+		text, err := run(ctx, r.Root, "ls-files", "--others", "--exclude-standard", "-z")
+		untrackedDone <- output{text: text, err: err}
+	}()
+
+	diff, err := run(ctx, r.Root, "diff", "--name-status", "--no-renames", "-z", "--merge-base", base, "--")
+	if err != nil {
+		diff, err = r.diffSinceMergeBase(ctx, base)
+	}
+
+	untracked := <-untrackedDone
+
+	if err != nil {
+		return nil, err
+	}
+
+	if untracked.err != nil {
+		return nil, fmt.Errorf("list untracked files: %w", untracked.err)
+	}
+
+	return parseChanges(diff, untracked.text), nil
+}
+
+func (r Repo) diffSinceMergeBase(ctx context.Context, base string) (string, error) {
+	mergeBase, err := r.MergeBase(ctx, base)
+	if err != nil {
+		return "", err
+	}
 
 	diff, err := run(ctx, r.Root, "diff", "--name-status", "--no-renames", "-z", mergeBase, "--")
 	if err != nil {
-		return nil, fmt.Errorf("list changed files since %s: %w", mergeBase, err)
+		return "", fmt.Errorf("list changed files since %s: %w", base, err)
 	}
+
+	return diff, nil
+}
+
+func parseChanges(diff, untracked string) map[string]ir.ChangeState {
+	changes := map[string]ir.ChangeState{}
 
 	fields := strings.Split(strings.TrimSuffix(diff, "\x00"), "\x00")
 	for i := 0; i+1 < len(fields); i += 2 {
@@ -94,18 +165,13 @@ func (r Repo) Changes(ctx context.Context, mergeBase string) (map[string]ir.Chan
 		}
 	}
 
-	untracked, err := run(ctx, r.Root, "ls-files", "--others", "--exclude-standard", "-z")
-	if err != nil {
-		return nil, fmt.Errorf("list untracked files: %w", err)
-	}
-
 	for name := range strings.SplitSeq(untracked, "\x00") {
 		if name != "" {
 			changes[name] = ir.ChangeStateNew
 		}
 	}
 
-	return changes, nil
+	return changes
 }
 
 func (r Repo) Relative(absolute string) (string, bool) {

@@ -53,14 +53,9 @@ func applyGitScope(
 		return migrations, changeScope{}, nil
 	}
 
-	mergeBase, err := repo.MergeBase(ctx, base)
+	changes, err := repo.Changes(ctx, base)
 	if err == nil {
-		var changes map[string]ir.ChangeState
-
-		changes, err = repo.Changes(ctx, mergeBase)
-		if err == nil {
-			return filterChanged(migrations, repo, cwd, changes, checkEverything), changeScope{Base: base, ChangedOnly: !checkEverything}, nil
-		}
+		return filterChanged(migrations, repo, cwd, changes, checkEverything), changeScope{Base: base, ChangedOnly: !checkEverything}, nil
 	}
 
 	if errors.Is(err, context.Canceled) {

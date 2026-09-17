@@ -194,17 +194,36 @@ func MaskTemplates(sql string) string {
 }
 
 func Load(root string, adapter adapters.Adapter, file adapters.File, parse Parser) (*ir.Migration, error) {
+	migration, err := Read(root, adapter, file)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := ParseMigration(migration, parse); err != nil {
+		return nil, err
+	}
+
+	return migration, nil
+}
+
+func ParseMigration(migration *ir.Migration, parse Parser) error {
+	statements, err := parse(MaskTemplates(migration.SQL))
+	if err != nil {
+		return fmt.Errorf("parse %s: %w", migration.SourcePath, err)
+	}
+
+	migration.Statements = statements
+
+	return nil
+}
+
+func Read(root string, adapter adapters.Adapter, file adapters.File) (*ir.Migration, error) {
 	source, err := fs.ReadFile(os.DirFS(root), file.Path)
 	if err != nil {
 		return nil, fmt.Errorf("read migration %s: %w", file.Path, err)
 	}
 
 	extraction := adapter.Extract(string(source))
-
-	statements, err := parse(MaskTemplates(extraction.SQL))
-	if err != nil {
-		return nil, fmt.Errorf("parse %s: %w", file.Path, err)
-	}
 
 	name := file.Name
 	if name == "" {
@@ -218,9 +237,9 @@ func Load(root string, adapter adapters.Adapter, file adapters.File, parse Parse
 		Framework:   adapter.Name(),
 		SourcePath:  file.Path,
 		Source:      string(source),
+		SQL:         extraction.SQL,
 		Direction:   ir.DirectionUp,
 		TxMode:      extraction.TxMode,
-		Statements:  statements,
 		ChangeState: ir.ChangeStateNew,
 		Origin:      ir.OriginRawSQL,
 	}, nil

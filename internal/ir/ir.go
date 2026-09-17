@@ -44,6 +44,7 @@ type Migration struct {
 	Framework   string
 	SourcePath  string
 	Source      string
+	SQL         string
 	Direction   Direction
 	TxMode      TxMode
 	Statements  []*Statement

@@ -168,18 +168,29 @@ func collectMigrations(
 		return nil, changeScope{}, err
 	}
 
+	scope := changeScope{}
 	explicitPaths := len(args) > 0
-	if explicitPaths && !opts.all {
-		return migrations, changeScope{}, nil
-	}
 
-	notice := func(message string) {
-		if !opts.quiet {
-			writeNotice(stderr, message)
+	if !explicitPaths || opts.all {
+		notice := func(message string) {
+			if !opts.quiet {
+				writeNotice(stderr, message)
+			}
+		}
+
+		migrations, scope, err = applyGitScope(ctx, migrations, explicitPaths, opts, notice)
+		if err != nil {
+			return nil, changeScope{}, err
 		}
 	}
 
-	return applyGitScope(ctx, migrations, explicitPaths, opts, notice)
+	for _, migration := range migrations {
+		if err := discovery.ParseMigration(migration, dialect.Parse); err != nil {
+			return nil, changeScope{}, internalError(err)
+		}
+	}
+
+	return migrations, scope, nil
 }
 
 func writeCheckReport(
