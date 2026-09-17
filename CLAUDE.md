@@ -6,7 +6,7 @@ migrail is a free, open source CLI that catches dangerous database migrations be
 
 ## Stack
 
-- Go (≥ 1.24), single binary, cgo enabled
+- Go (≥ 1.26.4), single binary, cgo enabled
 - CLI: cobra · Terminal UI: lipgloss, bubbletea, bubbles, huh, glamour
 - Postgres parser: pganalyze/pg_query_go · Code parsing: tree-sitter
 - Live DB: pgx/v5 · Config: goccy/go-yaml + JSON schema
@@ -98,7 +98,9 @@ MIGRAIL_TEST_DATABASE_URL=
 
 ## README
 
-`README.md` grows with the project. When a feature lands, update the README in the same change: move it from planned to available, add real install and usage commands, and tick the roadmap. Never document something that doesn't work yet as if it does.
+`README.md` is the public face of the project. Write it for people who find the repository: what migrail is, why they'd use it, how to install and run it, and what's coming. Keep internal notes, plan details and working status out of it; those belong in `PLAN.md`.
+
+Update the README in the same change whenever a user-visible feature ships or changes: move it from planned to available, add real install and usage commands, refresh examples and output samples, and tick the roadmap. Edit the existing sections in place rather than appending notes. Never document something that doesn't work yet as if it does; label planned features as planned.
 
 ## Workflow
 

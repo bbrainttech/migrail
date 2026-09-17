@@ -1,0 +1,96 @@
+version: 2
+
+project_name: migrail
+
+before:
+  hooks:
+    - go mod download
+
+builds:
+  - &build
+    id: darwin-arm64
+    main: ./cmd/migrail
+    binary: migrail
+    goos: [darwin]
+    goarch: [arm64]
+    env:
+      - CGO_ENABLED=1
+      - CC=clang
+      - CXX=clang++
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - '{{ if eq .Os "linux" }}-linkmode external -extldflags=-static{{ end }}'
+      - -X github.com/bbrainttech/migrail/internal/cli.version={{ .Version }}
+      - -X github.com/bbrainttech/migrail/internal/cli.commit={{ .ShortCommit }}
+      - -X github.com/bbrainttech/migrail/internal/cli.date={{ .CommitDate }}
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+  - <<: *build
+    id: darwin-amd64
+    goos: [darwin]
+    goarch: [amd64]
+    env:
+      - CGO_ENABLED=1
+      - CC=clang
+      - CXX=clang++
+
+  - <<: *build
+    id: linux-amd64
+    goos: [linux]
+    goarch: [amd64]
+    env:
+      - CGO_ENABLED=1
+      - CC=zig cc -target x86_64-linux-musl
+      - CXX=zig c++ -target x86_64-linux-musl
+
+  - <<: *build
+    id: linux-arm64
+    goos: [linux]
+    goarch: [arm64]
+    env:
+      - CGO_ENABLED=1
+      - CC=zig cc -target aarch64-linux-musl
+      - CXX=zig c++ -target aarch64-linux-musl
+
+  - <<: *build
+    id: windows-amd64
+    goos: [windows]
+    goarch: [amd64]
+    env:
+      - CGO_ENABLED=1
+      - CC=zig cc -target x86_64-windows-gnu
+      - CXX=zig c++ -target x86_64-windows-gnu
+
+  - <<: *build
+    id: windows-arm64
+    goos: [windows]
+    goarch: [arm64]
+    env:
+      - CGO_ENABLED=1
+      - CC=zig cc -target aarch64-windows-gnu
+      - CXX=zig c++ -target aarch64-windows-gnu
+
+archives:
+  - id: default
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-snapshot"
+
+changelog:
+  disable: true
+
+release:
+  disable: true

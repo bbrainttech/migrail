@@ -61,15 +61,22 @@ It runs anywhere: a single fast binary with a terminal UI people enjoy using, in
 
 ## 2. Competitive landscape & how we win
 
+Audited 2026-09-17 against each project's own docs, release notes and GitHub repository. Star counts are from the GitHub API on that date.
+
 | Tool | What it does well | Gaps we exploit |
 |---|---|---|
-| **Atlas** (atlasgo.io) | Multi-database schema management, declarative migrations, `migrate lint`, many dialects | Lint is part of a broader schema-management product with an account/cloud tier for parts of the workflow; best experience assumes adopting Atlas's migration workflow; no application code awareness; generic (not framework-native) fix advice |
-| **squawk** | Fast Postgres SQL linter (Rust), GitHub integration | Postgres + raw SQL only; no ORM adapters; no code awareness; no live table size estimates |
-| **strong_migrations** | Excellent Rails-native checks | Rails only, runtime-only (checks when migration runs) |
-| **django-pg-zero-downtime-migrations** | Safe Django migration backend | Django + Postgres only; changes execution rather than reviewing |
-| **pgroll / Reshape** | Zero-downtime execution via expand/contract | Different category (executor); requires adopting their migration format |
+| **Atlas** (atlasgo.io, v1.3.0, 8.7k stars, Apache-2.0) | Schema management for many databases, declarative and versioned migrations, reads golang-migrate/goose/Flyway/Liquibase/dbmate directories. About 60 lint checks, including Postgres lock and rewrite checks (PG101–PG311) and MySQL copy/rebuild checks | Since v0.38 (Oct 2025) `atlas migrate lint` is **Atlas Pro only** in the official binary and needs `atlas login`. The Community build keeps the older lint engine. Every Postgres lock/rewrite check (PG1xx, PG3xx) is marked Pro. Lint needs a dev database (`--dev-url`). No application code awareness. Fixes are generic SQL |
+| **squawk** (v2.65.0, 1.2k stars, Apache-2.0/MIT) | Fast Postgres SQL linter (Rust, real Postgres parser), 42 rules, `--pg-version`, `--assume-in-transaction`, GitHub Action and PR comments, VS Code extension, npm/pip/Docker installs | Postgres and SQL files only. Its docs say it "doesn't have special support for Django or any other web ORM"; users pipe generated SQL in (`alembic upgrade --sql \| squawk`). No code awareness. No live table sizes |
+| **strong_migrations** (4.4k stars, MIT) | Excellent Rails-native checks | Rails only, runtime-only (checks when migration runs) |
+| **django-pg-zero-downtime-migrations** (0.6k stars, MIT) | Safe Django migration backend | Django + Postgres only; changes execution rather than reviewing |
+| **pgroll** (6.6k stars, Apache-2.0) / Reshape | Zero-downtime execution via expand/contract | Different category (executor); requires adopting their migration format |
+| **eugene** (62 stars, MIT) | Postgres linter plus a trace mode that runs migrations against a temporary database and reports the locks actually taken | Postgres and SQL only; no framework adapters; no code awareness |
+| **MigrationPilot** (7 stars, MIT) | Postgres linter on the real parser, claims 112 rules, lock analysis, auto-fix | Postgres and SQL only; some rules sold as a paid tier; very early |
 
-> **Phase 0 task:** do a fresh, hands-on audit of Atlas and squawk (features, what's free vs paid, dialect depth, UX) and update this table. Don't market against claims we haven't verified.
+What this changes for us:
+- The free official Atlas binary no longer lints, and its Postgres lock checks were already paid. A free tool with verified lock claims fills that gap. We still compare against the Community build honestly.
+- squawk is the closest free tool. We don't win on "has a Postgres linter". We win on framework adapters, application code checks, live impact estimates and framework-native fixes. We need parity on its basics too: `--pg-version`, assumed transaction mode, GitHub PR comments, an editor extension.
+- eugene's trace mode shows observed locks are valued. Our lock harness (§23.3) must stay a visible part of the docs.
 
 ### Our wedge: free, better, easier
 
@@ -96,7 +103,7 @@ The architecture is dialect-pluggable from day one (§10), so expanding never re
 ## 3. Principles
 
 1. **Correct before clever.** A wrong "safe" is worse than no tool. When uncertain, say so ("could not determine transaction mode: assuming transactional").
-2. **Quiet when safe.** A clean run prints one line. No banners, no ASCII art walls.
+2. **Quiet when safe.** A clean run prints one line. The migrail artwork appears only on welcome screens (`--help`, `init`, `version`; §19.5 J), never above `check` results, in CI or in piped output.
 3. **Every finding is actionable.** Each one answers *what*, *where*, *why it's dangerous* and *how to fix it*, in the user's framework.
 4. **Fast enough to never think about.** Sub-second on typical repos; results start streaming immediately.
 5. **Read-only, always.** migrail never writes to a user's database. Capture mode only ever touches a throwaway database it created itself.
@@ -211,7 +218,7 @@ The architecture is dialect-pluggable from day one (§10), so expanding never re
                          └──────────────────────────────────────────────┘
 ```
 
-**Language:** Go (≥ 1.24). Chosen for single static-ish binary, fast startup, great concurrency, great terminal ecosystem (Charm).
+**Language:** Go (≥ 1.26.4). Chosen for single static-ish binary, fast startup, great concurrency, great terminal ecosystem (Charm).
 
 ### Key dependencies
 | Purpose | Library |
@@ -998,6 +1005,7 @@ Background detection: `lipgloss.HasDarkBackground()` with a 100 ms timeout; if u
 | success | `✔` | `ok` |
 | suppressed | `◌` | `-` |
 | file header marker | `▌` | `>` |
+| artwork rail | `═╪═` | `=+=` |
 | tree branches | `├─ │ ╰─ ╭─` | `\|- \| \`- ,-` |
 | caret underline | `━━━━` (colored) | `^^^^` |
 | spinner | braille dots `⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏` | `- \ \| /` |
@@ -1145,6 +1153,22 @@ Phases shown: `Discovering` → `Extracting SQL` → `Scanning code` → `Queryi
 Header row bold `fg.muted`; severity column colored; `off` rows fully dimmed.
 
 **H) `migrail explain MR101`**: Glamour-rendered markdown using a custom migrail Glamour style matching tokens; framework section auto-selects the detected framework first, others listed after; piped to `$PAGER` when output exceeds terminal height (disable with `--no-pager`).
+
+**J) Welcome artwork** (`migrail --help`, `migrail init`, `migrail version`)
+```
+ █▀▄▀█ █ █▀▀ █▀█ ▄▀█ █ █
+ █ ▀ █ █ █▄█ █▀▄ █▀█ █ █▄▄
+═╪═══╪═══╪═══╪═══╪═══╪═══╪═
+ catch dangerous migrations
+ before they reach production
+```
+- Shown only when stdout is a TTY, the format is `pretty`, and none of `--quiet`, `--ci`, `CI=true` apply. `migrail version` without a TTY prints only its plain lines, so scripts can parse it.
+- Wordmark: horizontal gradient from `accent` to `notice`, bold. Truecolor interpolates per column; 256 colors uses the nearest palette entries; 16 colors uses `accent` only.
+- Rail line `═` in `fg.subtle`, ties `╪` in `fg.muted`. Tagline in `fg.muted`.
+- One blank line after the artwork, then the screen's normal content.
+- `NO_COLOR` / `--theme mono`: same art, no color. ASCII fallback (§19.3): wordmark as `m i g r a i l`, rail as `=+===+===+===+===+===+===+=`.
+- Width < 60: replaced by a single bold `migrail` line in `accent`.
+- The art is static string data. It adds no measurable time to `migrail version` (§21 budget: < 15 ms).
 
 **I) `migrail doctor`**
 ```
@@ -1316,7 +1340,8 @@ Every wrapper package version == binary version. A single release pipeline publi
 
 ### 22.2 Build matrix (cgo)
 Targets: `darwin/arm64`, `darwin/amd64`, `linux/amd64`, `linux/arm64` (both **musl static** for portability), `windows/amd64`, `windows/arm64`.
-- Approach: goreleaser with **zig cc** as C cross-compiler (single Linux runner), falling back to a native runner matrix (macOS runners for darwin) if zig issues arise.
+- Approach: goreleaser with **zig cc** as C cross-compiler on one Linux runner for `linux/*` (musl, static) and `windows/*`. **darwin builds run on a macOS runner with native clang.** Checked on 2026-09-17 with zig 0.14.1 and a probe binary that links pg_query_go v6: Linux and Windows targets build and run, but darwin fails to link because zig ships no macOS SDK (`libresolv`, `CoreFoundation`).
+- goreleaser OSS can't merge builds from several runners (`--split`/`--merge` is Pro). CI builds each group with `goreleaser build --id …`. M3 decides how the release job assembles archives from both runners.
 - macOS binaries codesigned + notarized; Windows binaries signed (when certificate is available).
 
 ### 22.3 Supply chain
@@ -1397,7 +1422,7 @@ Runs nightly + on changes to `dialect/postgres/lockmodel`.
 | # | Decision | Options | Recommendation |
 |---|---|---|---|
 | D1 | Product name | – | **Decided: `migrail`.** On 2026-09-17 it was free on npm, PyPI, RubyGems, NuGet, Packagist, crates, Homebrew, Docker Hub and as a GitHub name. Reserve package names before the first public release |
-| D2 | License | Apache-2.0 / MIT | Apache-2.0 (patent grant; enterprise friendly) |
+| D2 | License | Apache-2.0 / MIT | **Decided: Apache-2.0** (patent grant; enterprise friendly). `LICENSE` added in M0 |
 | D3 | Rails primary strategy | capture vs static DSL | ship static DSL first (no Docker needed), capture as upgrade |
 | D4 | Default DB version when unknown | oldest supported / latest | oldest supported (conservative) + notice |
 | D5 | Min supported Postgres | 12 / 13 | 12 (still common in production), revisit yearly |
@@ -1443,7 +1468,7 @@ Durations are **focused working days** (a day = one solid Claude Code session wi
 ### M2: Beautiful CLI (days 4–5)
 - Theme tokens, components (code frame, tree labels, summary bar, spinner), pretty & compact renderers.
 - `explain`, `rules`, `completion`; golden tests.
-- **Done when:** all §19.5 screens A–E and G–H match goldens at all widths/profiles.
+- **Done when:** all §19.5 screens A–E, G–H and J match goldens at all widths/profiles.
 
 ### M3: v0.1 release (days 6–8)
 - Raw SQL adapters (golang-migrate, goose, Atlas dir, Flyway, Prisma, Drizzle, dbmate, sqitch).

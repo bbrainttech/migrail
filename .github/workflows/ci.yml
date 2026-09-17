@@ -1,0 +1,107 @@
+name: ci
+
+on:
+  push:
+    branches: [main, staging]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CGO_ENABLED: "1"
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Check go.mod is tidy
+        run: go mod tidy -diff
+      - uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.12.2
+
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - run: go test -race ./...
+
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            name: linux-windows
+            zig: true
+            ids: --id linux-amd64 --id linux-arm64 --id windows-amd64 --id windows-arm64
+          - runner: macos-latest
+            name: darwin
+            zig: false
+            ids: --id darwin-arm64 --id darwin-amd64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - if: matrix.zig
+        uses: mlugg/setup-zig@v2
+        with:
+          version: 0.14.1
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          version: "~> v2"
+          args: build --snapshot --clean ${{ matrix.ids }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: binaries-${{ matrix.name }}
+          path: dist/*/migrail*
+          retention-days: 7
+
+  smoke:
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            artifact: binaries-linux-windows
+            binary: linux-amd64_linux_amd64_v1/migrail
+          - runner: ubuntu-24.04-arm
+            artifact: binaries-linux-windows
+            binary: linux-arm64_linux_arm64_v8.0/migrail
+          - runner: windows-latest
+            artifact: binaries-linux-windows
+            binary: windows-amd64_windows_amd64_v1/migrail.exe
+          - runner: macos-latest
+            artifact: binaries-darwin
+            binary: darwin-arm64_darwin_arm64_v8.0/migrail
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          name: ${{ matrix.artifact }}
+      - name: Run migrail version from the CI build
+        shell: bash
+        run: |
+          chmod +x "${{ matrix.binary }}"
+          "./${{ matrix.binary }}" version
