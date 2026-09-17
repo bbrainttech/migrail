@@ -36,9 +36,10 @@ type Options struct {
 }
 
 type renderer struct {
-	in   Input
-	opts Options
-	t    theme.Theme
+	in      Input
+	opts    Options
+	t       theme.Theme
+	ignored int
 }
 
 func Write(w io.Writer, in Input, opts Options) error {
@@ -50,7 +51,21 @@ func Write(w io.Writer, in Input, opts Options) error {
 }
 
 func Render(in Input, opts Options) string {
-	r := renderer{in: in, opts: opts, t: opts.Theme}
+	visible := make([]ir.Finding, 0, len(in.Result.Findings))
+	ignored := 0
+
+	for _, finding := range in.Result.Findings {
+		if finding.Suppressed != nil {
+			ignored++
+
+			continue
+		}
+
+		visible = append(visible, finding)
+	}
+
+	in.Result.Findings = visible
+	r := renderer{in: in, opts: opts, t: opts.Theme, ignored: ignored}
 
 	var lines []string
 
@@ -75,10 +90,15 @@ func (r renderer) clean() string {
 			t.Fg.Render("no changed migrations since "+r.in.Base) + r.dot() + t.Muted.Render(formatDuration(r.in.Elapsed))
 	}
 
-	return t.Success.Render(t.Symbols.Success) + " " +
+	line := t.Success.Render(t.Symbols.Success) + " " +
 		t.Fg.Render(fmt.Sprintf("%d %s checked", count, components.Plural(count, "migration", "migrations"))) +
-		r.dot() + t.Fg.Render("no issues") +
-		r.dot() + t.Muted.Render(formatDuration(r.in.Elapsed))
+		r.dot() + t.Fg.Render("no issues")
+
+	if r.ignored > 0 {
+		line += r.dot() + t.Muted.Render(fmt.Sprintf("%d ignored", r.ignored))
+	}
+
+	return line + r.dot() + t.Muted.Render(formatDuration(r.in.Elapsed))
 }
 
 func (r renderer) dot() string {
@@ -102,6 +122,10 @@ func (r renderer) compact() []string {
 
 	for _, entry := range counts.nonZero() {
 		parts = append(parts, t.Severity(entry.severity).Render(entry.text))
+	}
+
+	if r.ignored > 0 {
+		parts = append(parts, t.Muted.Render(fmt.Sprintf("%d ignored", r.ignored)))
 	}
 
 	parts = append(parts, t.Muted.Render(formatDuration(r.in.Elapsed)))

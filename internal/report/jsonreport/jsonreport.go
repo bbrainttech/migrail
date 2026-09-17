@@ -53,6 +53,7 @@ type summary struct {
 	Errors     int `json:"errors"`
 	Warnings   int `json:"warnings"`
 	Notices    int `json:"notices"`
+	Ignored    int `json:"ignored"`
 }
 
 type migration struct {
@@ -77,6 +78,13 @@ type finding struct {
 	Fix         *fix          `json:"fix,omitempty"`
 	MigrationID string        `json:"migrationId"`
 	Fingerprint string        `json:"fingerprint"`
+	Suppressed  *suppressed   `json:"suppressed,omitempty"`
+}
+
+type suppressed struct {
+	Reason string `json:"reason"`
+	Source string `json:"source"`
+	Line   int    `json:"line,omitempty"`
 }
 
 type location struct {
@@ -161,6 +169,13 @@ func build(in Input) report {
 
 	for _, f := range in.Result.Findings {
 		out.Findings = append(out.Findings, buildFinding(f))
+
+		if f.Suppressed != nil {
+			out.Summary.Ignored++
+
+			continue
+		}
+
 		countSeverity(&out.Summary, f.Severity)
 	}
 
@@ -202,6 +217,10 @@ func buildFinding(f ir.Finding) finding {
 
 	if f.Statement != nil {
 		out.Statement = statement{Index: f.Statement.Index, SQL: f.Statement.SQL, InTransaction: f.Statement.InTx}
+	}
+
+	if f.Suppressed != nil {
+		out.Suppressed = &suppressed{Reason: f.Suppressed.Reason, Source: f.Suppressed.Source, Line: f.Suppressed.Line}
 	}
 
 	if f.Lock != nil {

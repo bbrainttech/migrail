@@ -59,7 +59,7 @@ func Run(ctx context.Context, dialect Dialect, migrations []*ir.Migration, rules
 	}
 
 	result.Findings = dedupe(result.Findings)
-	sortFindings(result.Findings)
+	SortFindings(result.Findings)
 
 	return result, nil
 }
@@ -88,7 +88,7 @@ func checkMigration(dialect Dialect, migration *ir.Migration, rules []Rule, opts
 		}
 
 		for _, finding := range findings {
-			result.Findings = append(result.Findings, complete(dialect, rule.Meta(), migration, nil, finding))
+			result.Findings = append(result.Findings, Complete(dialect, rule.Meta(), migration, nil, finding))
 		}
 	}
 
@@ -110,7 +110,7 @@ func checkMigration(dialect Dialect, migration *ir.Migration, rules []Rule, opts
 			}
 
 			for _, finding := range findings {
-				result.Findings = append(result.Findings, complete(dialect, rule.Meta(), migration, stmt, finding))
+				result.Findings = append(result.Findings, Complete(dialect, rule.Meta(), migration, stmt, finding))
 			}
 		}
 
@@ -169,7 +169,7 @@ func supportsVersion(meta ir.RuleMeta, version ir.Version) bool {
 	return meta.MaxVersion == nil || version.Compare(*meta.MaxVersion) <= 0
 }
 
-func complete(dialect Dialect, meta ir.RuleMeta, migration *ir.Migration, stmt *ir.Statement, finding ir.Finding) ir.Finding {
+func Complete(dialect Dialect, meta ir.RuleMeta, migration *ir.Migration, stmt *ir.Statement, finding ir.Finding) ir.Finding {
 	finding.RuleID = meta.ID
 	finding.Slug = meta.Slug
 	finding.MigrationID = migration.ID
@@ -235,7 +235,7 @@ func dedupe(findings []ir.Finding) []ir.Finding {
 	return unique
 }
 
-func sortFindings(findings []ir.Finding) {
+func SortFindings(findings []ir.Finding) {
 	slices.SortStableFunc(findings, func(a, b ir.Finding) int {
 		return cmp.Or(
 			cmp.Compare(a.Location.Path, b.Location.Path),

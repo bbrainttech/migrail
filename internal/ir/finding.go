@@ -78,6 +78,13 @@ type Finding struct {
 	MigrationID string
 	Statement   *Statement
 	Fingerprint string
+	Suppressed  *Suppression
+}
+
+type Suppression struct {
+	Reason string
+	Source string
+	Line   int
 }
 
 type LockImpact struct {

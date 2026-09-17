@@ -16,7 +16,8 @@
     "statements": 9,
     "errors": 6,
     "warnings": 5,
-    "notices": 0
+    "notices": 0,
+    "ignored": 0
   },
   "migrations": [
     {

@@ -1,0 +1,42 @@
+{
+  "bad/at_end_of_file.sql": [
+    {
+      "line": 2,
+      "column": 1,
+      "severity": "notice",
+      "confidence": "definite"
+    }
+  ],
+  "bad/file_level_unused.sql": [
+    {
+      "line": 1,
+      "column": 1,
+      "severity": "notice",
+      "confidence": "definite"
+    }
+  ],
+  "bad/rule_not_reported.sql": [
+    {
+      "line": 1,
+      "column": 1,
+      "severity": "notice",
+      "confidence": "definite"
+    }
+  ],
+  "bad/unknown_rule.sql": [
+    {
+      "line": 1,
+      "column": 1,
+      "severity": "notice",
+      "confidence": "definite"
+    }
+  ],
+  "bad/wrong_statement.sql": [
+    {
+      "line": 1,
+      "column": 1,
+      "severity": "notice",
+      "confidence": "definite"
+    }
+  ]
+}

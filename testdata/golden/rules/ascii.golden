@@ -22,4 +22,6 @@
   MR503  delete-or-update-without-where  error     data           all
   MR901  parse-error                     error     diagnostic     all
   MR903  dynamic-sql                     notice    diagnostic     all
-  23 rules - 22 enabled - run migrail explain <ID>
+  MR904  ignore-without-reason           warning   diagnostic     all
+  MR905  unused-ignore                   notice    diagnostic     all
+  25 rules - 24 enabled - run migrail explain <ID>

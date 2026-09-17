@@ -22,4 +22,6 @@
   [1mMR503[m  delete-or-update-without-where  error     data           all
   [1mMR901[m  parse-error                     error     diagnostic     all
   [1mMR903[m  dynamic-sql                     notice    diagnostic     all
-  23 rules · 22 enabled · run migrail explain <ID>
+  [1mMR904[m  ignore-without-reason           warning   diagnostic     all
+  [1mMR905[m  unused-ignore                   notice    diagnostic     all
+  25 rules · 24 enabled · run migrail explain <ID>

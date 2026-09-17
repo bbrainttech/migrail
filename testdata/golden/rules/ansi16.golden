@@ -22,4 +22,6 @@
   [1mMR503[m  delete-or-update-without-where  [31merror   [m  data           all
   [1mMR901[m  parse-error                     [31merror   [m  diagnostic     all
   [1mMR903[m  dynamic-sql                     [36mnotice  [m  diagnostic     all
-  [90m23 rules · 22 enabled · run [mmigrail explain <ID>
+  [1mMR904[m  ignore-without-reason           [33mwarning [m  diagnostic     all
+  [1mMR905[m  unused-ignore                   [36mnotice  [m  diagnostic     all
+  [90m25 rules · 24 enabled · run [mmigrail explain <ID>

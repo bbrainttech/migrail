@@ -22,4 +22,6 @@
   [1;38;2;230;230;234mMR503[m  [38;2;230;230;234mdelete-or-update-without-where[m  [38;2;255;107;129merror   [m  [38;2;230;230;234mdata         [m  [38;2;230;230;234mall[m
   [1;38;2;230;230;234mMR901[m  [38;2;230;230;234mparse-error                   [m  [38;2;255;107;129merror   [m  [38;2;230;230;234mdiagnostic   [m  [38;2;230;230;234mall[m
   [1;38;2;230;230;234mMR903[m  [38;2;230;230;234mdynamic-sql                   [m  [38;2;108;196;255mnotice  [m  [38;2;230;230;234mdiagnostic   [m  [38;2;230;230;234mall[m
-  [38;2;139;141;152m23 rules · 22 enabled · run [m[38;2;230;230;234mmigrail explain <ID>[m
+  [1;38;2;230;230;234mMR904[m  [38;2;230;230;234mignore-without-reason         [m  [38;2;245;185;92mwarning [m  [38;2;230;230;234mdiagnostic   [m  [38;2;230;230;234mall[m
+  [1;38;2;230;230;234mMR905[m  [38;2;230;230;234munused-ignore                 [m  [38;2;108;196;255mnotice  [m  [38;2;230;230;234mdiagnostic   [m  [38;2;230;230;234mall[m
+  [38;2;139;141;152m25 rules · 24 enabled · run [m[38;2;230;230;234mmigrail explain <ID>[m

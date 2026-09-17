@@ -17,6 +17,7 @@ import (
 	"github.com/bbrainttech/migrail/internal/report/jsonreport"
 	"github.com/bbrainttech/migrail/internal/report/pretty"
 	"github.com/bbrainttech/migrail/internal/rules"
+	"github.com/bbrainttech/migrail/internal/suppress"
 	"github.com/bbrainttech/migrail/internal/ui/components"
 	"github.com/bbrainttech/migrail/internal/ui/progress"
 	"github.com/bbrainttech/migrail/internal/ui/term"
@@ -132,6 +133,8 @@ func runCheck(ctx context.Context, cmd *cobra.Command, args []string, opts check
 		return internalError(err)
 	}
 
+	result = applySuppressions(result, migrations, dialect, opts)
+
 	finish.Done("Analyzed", fmt.Sprintf("%d %s %s %d rules", result.Statements, components.Plural(result.Statements, "statement", "statements"), stderr.theme.Symbols.Dot, result.RulesRun))
 
 	if err := writeCheckReport(cmd, opts, settings, dialect, dbVersion, migrations, scope, result, time.Since(started)); err != nil {
@@ -216,6 +219,28 @@ func writeCheckReport(
 	}, options)
 }
 
+func applySuppressions(result analyze.Result, migrations []*ir.Migration, dialect *pg.Dialect, opts checkOptions) analyze.Result {
+	all := rules.All()
+	active := map[string]bool{}
+
+	for _, rule := range analyze.ActiveRules(all, dialect.Name(), analyze.Options{Only: opts.rules, Skip: opts.skipRules}) {
+		active[rule.Meta().ID] = true
+	}
+
+	result = suppress.Apply(result, migrations, suppress.Options{RequireReason: true, Rules: all, Dialect: dialect})
+
+	kept := result.Findings[:0]
+	for _, finding := range result.Findings {
+		if active[finding.RuleID] {
+			kept = append(kept, finding)
+		}
+	}
+
+	result.Findings = kept
+
+	return result
+}
+
 func writeNotice(d display, message string) {
 	t := d.theme
 	_, _ = fmt.Fprintln(d.out, t.Notice.Render(t.Symbols.Notice)+" "+t.Strong(t.Notice).Render("notice")+" "+t.Fg.Render(message))
@@ -263,7 +288,7 @@ func checkOutcome(result analyze.Result, failOn string, summarized bool) error {
 	failing := 0
 
 	for _, finding := range result.Findings {
-		if finding.Severity.AtLeast(ir.Severity(failOn)) {
+		if finding.Suppressed == nil && finding.Severity.AtLeast(ir.Severity(failOn)) {
 			failing++
 		}
 	}

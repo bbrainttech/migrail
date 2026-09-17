@@ -144,6 +144,17 @@ Exit codes: `0` no failing findings, `1` findings at or above `--fail-on`, `2` u
 
 Shell completion: `migrail completion bash|zsh|fish|powershell`.
 
+### Ignoring findings
+
+When a finding is safe in your situation, ignore it with a comment and say why:
+
+```sql
+-- migrail:ignore MR101 reason="orders is empty until launch"
+CREATE INDEX idx_orders_status ON orders (status);
+```
+
+`migrail:ignore` applies to the next statement. `migrail:ignore-file` applies to the whole file. List several rules with commas, by ID or slug. A reason is required: without one the finding is still reported, together with MR904. Ignores that don't match any finding are reported as MR905. Ignored findings are hidden from the terminal output, counted in the summary, and kept in JSON output with their reason.
+
 ### Available rules
 
 | ID | Rule | Severity |
@@ -171,6 +182,8 @@ Shell completion: `migrail completion bash|zsh|fish|powershell`.
 | MR503 | `delete-or-update-without-where`: `UPDATE` or `DELETE` without `WHERE` changes every row | error |
 | MR901 | `parse-error`: the SQL can't be parsed | error |
 | MR903 | `dynamic-sql`: SQL inside a `DO` block can't be checked | notice |
+| MR904 | `ignore-without-reason`: an ignore comment has no reason | warning |
+| MR905 | `unused-ignore`: an ignore comment doesn't match any finding | notice |
 
 Run `migrail explain <ID>` for what each rule detects, why it matters and how to fix it.
 

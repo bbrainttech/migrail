@@ -72,6 +72,10 @@ func (r renderer) summary() []string {
 		parts = append(parts, t.Severity(entry.severity).Render(text))
 	}
 
+	if r.ignored > 0 {
+		parts = append(parts, t.Muted.Render(fmt.Sprintf("%s %d ignored", t.Symbols.Suppressed, r.ignored)))
+	}
+
 	files := len(r.in.Migrations)
 	left := "  " + strings.Join(parts, "  ")
 	right := t.Muted.Render(fmt.Sprintf("%d %s %s %d stmts %s %s",

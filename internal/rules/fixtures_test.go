@@ -13,6 +13,7 @@ import (
 	"github.com/bbrainttech/migrail/internal/analyze"
 	pg "github.com/bbrainttech/migrail/internal/dialect/postgres"
 	"github.com/bbrainttech/migrail/internal/ir"
+	"github.com/bbrainttech/migrail/internal/suppress"
 )
 
 const (
@@ -131,9 +132,14 @@ func runFixture(t *testing.T, id, file string) []ir.Finding {
 		migration.ChangeState = ir.ChangeStateModified
 	}
 
+	allIDs := []string{}
+	for _, rule := range All() {
+		allIDs = append(allIDs, rule.Meta().ID)
+	}
+
 	result, err := analyze.Run(context.Background(), dialect, []*ir.Migration{migration}, All(), analyze.Options{
 		DBVersion: dialect.DefaultVersion(),
-		Only:      []string{id},
+		Only:      allIDs,
 	})
 	if err != nil {
 		t.Fatalf("analyze %s: %v", path, err)
@@ -143,7 +149,17 @@ func runFixture(t *testing.T, id, file string) []ir.Finding {
 		t.Fatalf("%s: rule errors: %+v", file, result.RuleErrors)
 	}
 
-	return result.Findings
+	result = suppress.Apply(result, []*ir.Migration{migration}, suppress.Options{RequireReason: true, Rules: All(), Dialect: dialect})
+
+	findings := []ir.Finding{}
+
+	for _, finding := range result.Findings {
+		if finding.RuleID == id && finding.Suppressed == nil {
+			findings = append(findings, finding)
+		}
+	}
+
+	return findings
 }
 
 func assertFindings(t *testing.T, file string, findings []ir.Finding, want []expectedFinding) {
