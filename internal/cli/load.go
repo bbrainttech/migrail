@@ -30,7 +30,7 @@ func loadMigrations(ctx context.Context, dialect *pg.Dialect, args []string, opt
 			return nil, errors.New("- reads standard input and can't be combined with file paths")
 		}
 
-		return loadStdin(dialect, stdin)
+		return loadStdin(stdin)
 	}
 
 	cwd, err := os.Getwd()
@@ -70,7 +70,7 @@ func loadMigrations(ctx context.Context, dialect *pg.Dialect, args []string, opt
 	return migrations, nil
 }
 
-func loadStdin(dialect *pg.Dialect, stdin io.Reader) ([]*ir.Migration, error) {
+func loadStdin(stdin io.Reader) ([]*ir.Migration, error) {
 	data, err := io.ReadAll(stdin)
 	if err != nil {
 		return nil, internalError(fmt.Errorf("read standard input: %w", err))

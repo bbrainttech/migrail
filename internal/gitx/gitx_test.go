@@ -2,6 +2,7 @@ package gitx
 
 import (
 	"context"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -40,15 +41,14 @@ func write(t *testing.T, path, content string) {
 	}
 }
 
-func TestChangesSinceMergeBase(t *testing.T) {
-	t.Parallel()
+func setupFeatureBranch(t *testing.T) string {
+	t.Helper()
 
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git is not installed")
 	}
 
 	dir := t.TempDir()
-	ctx := context.Background()
 
 	git(t, dir, "init", "-q", "-b", "main")
 	write(t, filepath.Join(dir, "db/0001_applied.sql"), "CREATE TABLE a (id int);\n")
@@ -64,6 +64,15 @@ func TestChangesSinceMergeBase(t *testing.T) {
 	git(t, dir, "add", ".")
 	git(t, dir, "commit", "-q", "-m", "feature")
 	write(t, filepath.Join(dir, "db/0005_untracked.sql"), "ALTER TABLE a ADD COLUMN x int;\n")
+
+	return dir
+}
+
+func TestChangesSinceMergeBase(t *testing.T) {
+	t.Parallel()
+
+	dir := setupFeatureBranch(t)
+	ctx := context.Background()
 
 	repo, ok := Open(ctx, filepath.Join(dir, "db"))
 	if !ok {
@@ -86,27 +95,28 @@ func TestChangesSinceMergeBase(t *testing.T) {
 		"db/0005_untracked.sql": ir.ChangeStateNew,
 	}
 
-	if len(changes) != len(want) {
-		t.Fatalf("changes = %v, want %v", changes, want)
+	if !maps.Equal(changes, want) {
+		t.Errorf("changes = %v, want %v", changes, want)
 	}
+}
 
-	for path, state := range want {
-		if changes[path] != state {
-			t.Errorf("changes[%s] = %q, want %q", path, changes[path], state)
-		}
-	}
+func TestBaseFallbacksAndPaths(t *testing.T) {
+	t.Parallel()
+
+	dir := setupFeatureBranch(t)
+	ctx := context.Background()
+	repo, _ := Open(ctx, dir)
 
 	if _, err := repo.ResolveBase(ctx, "does-not-exist", nil); err == nil {
 		t.Error("ResolveBase() with an unknown explicit base should fail")
 	}
 
-	mergeBase, err := repo.MergeBase(ctx, base)
-	if err != nil {
-		t.Fatal(err)
+	if base, err := repo.ResolveBase(ctx, "HEAD~1", nil); err != nil || base != "HEAD~1" {
+		t.Errorf("ResolveBase(HEAD~1) = %q, %v", base, err)
 	}
 
-	fallback, err := repo.diffSinceMergeBase(ctx, base)
-	if err != nil || !strings.Contains(fallback, "db/0002_edited.sql") || mergeBase == "" {
+	fallback, err := repo.diffSinceMergeBase(ctx, "main")
+	if err != nil || !strings.Contains(fallback, "db/0002_edited.sql") {
 		t.Errorf("diffSinceMergeBase() = %q, %v", fallback, err)
 	}
 
