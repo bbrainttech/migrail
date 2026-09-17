@@ -8,7 +8,9 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"slices"
+	"strings"
 
 	"github.com/bbrainttech/migrail/internal/adapters"
 	"github.com/bbrainttech/migrail/internal/adapters/atlasdir"
@@ -163,6 +165,34 @@ func (p Project) Files() ([]adapters.File, error) {
 	return files, nil
 }
 
+var templateExpression = regexp.MustCompile(`(?s)\{\{.*?\}\}`)
+
+func MaskTemplates(sql string) string {
+	if !strings.Contains(sql, "{{") {
+		return sql
+	}
+
+	return templateExpression.ReplaceAllStringFunc(sql, func(expression string) string {
+		var out strings.Builder
+
+		filler := byte('_')
+
+		for i := range len(expression) {
+			if expression[i] == '\n' {
+				out.WriteByte('\n')
+
+				filler = ' '
+
+				continue
+			}
+
+			out.WriteByte(filler)
+		}
+
+		return out.String()
+	})
+}
+
 func Load(root string, adapter adapters.Adapter, file adapters.File, parse Parser) (*ir.Migration, error) {
 	source, err := fs.ReadFile(os.DirFS(root), file.Path)
 	if err != nil {
@@ -171,7 +201,7 @@ func Load(root string, adapter adapters.Adapter, file adapters.File, parse Parse
 
 	extraction := adapter.Extract(string(source))
 
-	statements, err := parse(extraction.SQL)
+	statements, err := parse(MaskTemplates(extraction.SQL))
 	if err != nil {
 		return nil, fmt.Errorf("parse %s: %w", file.Path, err)
 	}

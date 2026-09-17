@@ -1,5 +1,7 @@
 package ir
 
+import "strings"
+
 type Dialect string
 
 const DialectPostgres Dialect = "postgres"
@@ -88,7 +90,7 @@ type ObjectRef struct {
 }
 
 func (o ObjectRef) String() string {
-	if o.Schema == "" {
+	if strings.Trim(o.Schema, "_") == "" {
 		return o.Name
 	}
 

@@ -146,3 +146,27 @@ func TestFindRoot(t *testing.T) {
 		t.Errorf("FindRoot(%s) = %s, want the repository root", start, root)
 	}
 }
+
+func TestMaskTemplatesKeepsLayout(t *testing.T) {
+	t.Parallel()
+
+	source := "CREATE TABLE {{ index .Options \"Namespace\" }}.users (id int);\nCREATE INDEX i ON {{\n .Schema }}.users (id);\nSELECT '{}';\n"
+	masked := MaskTemplates(source)
+
+	if len(masked) != len(source) || strings.Count(masked, "\n") != strings.Count(source, "\n") || strings.Contains(masked, "{{") {
+		t.Fatalf("MaskTemplates() = %q", masked)
+	}
+
+	statements, err := pg.New().Parse(masked)
+	if err != nil || len(statements) != 3 || statements[0].ParseError != nil || statements[1].ParseError != nil {
+		t.Fatalf("masked SQL doesn't parse: %+v, %v", statements, err)
+	}
+
+	if got := statements[0].Targets[0].String(); got != "users" {
+		t.Errorf("template schema should be hidden, got %q", got)
+	}
+
+	if MaskTemplates("SELECT 1") != "SELECT 1" {
+		t.Error("SQL without templates changed")
+	}
+}
