@@ -40,7 +40,7 @@ func startPostgres(ctx context.Context, version string) (*postgresContainer, err
 	id, err := docker(ctx, "run", "-d", "--rm",
 		"-e", "POSTGRES_PASSWORD="+password,
 		"-p", "127.0.0.1::5432",
-		"--tmpfs", "/var/lib/postgresql/data",
+		"--tmpfs", "/var/lib/postgresql",
 		"postgres:"+version+"-alpine",
 		"-c", "fsync=off")
 	if err != nil {

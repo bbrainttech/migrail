@@ -54,7 +54,7 @@ migrail is built around four commitments:
 
 - **Your framework, not raw SQL.** Fixes use your framework's syntax. Rails users get `disable_ddl_transaction!` and `algorithm: :concurrently`. Django users get `AddIndexConcurrently` and `atomic = False`.
 - **It knows your code.** Before you drop or rename a column, migrail will search your application for queries and models that still use it.
-- **Lock claims are tested.** A test harness will run every lock and rewrite claim against real PostgreSQL 12 to 18 before it ships.
+- **Lock claims are tested.** `make lockverify` checks every lock mode and rewrite claim in migrail's lock model against real PostgreSQL 12 to 18 in Docker, and CI runs it nightly.
 - **Every check is free.** The CLI and CI integration will have no paid tier and no login.
 
 ## Supported stacks
@@ -247,11 +247,13 @@ Statements on tables created earlier in the same set of files don't trigger lock
 Requirements: Go 1.26.4 or newer, a C compiler (the Postgres parser uses cgo), [golangci-lint](https://golangci-lint.run) v2, and Docker for integration tests.
 
 ```
-make build      build bin/migrail
-make test       run unit tests with the race detector
-make lint       run golangci-lint
-make fmt        format the code
-make snapshot   build a release binary for this machine with goreleaser
+make build           build bin/migrail
+make test            run unit tests with the race detector
+make lint            run golangci-lint
+make fmt             format the code
+make golden-update   regenerate terminal and JSON snapshots, then review the diff
+make lockverify      verify the lock model against PostgreSQL 12 to 18 (needs Docker)
+make snapshot        build a release binary for this machine with goreleaser
 ```
 
 ## License

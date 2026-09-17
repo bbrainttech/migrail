@@ -1499,6 +1499,10 @@ Durations are **focused working days** (a day = one solid Claude Code session wi
   - MR403 reports once per migration, at the first statement that locks an existing table without a `lock_timeout`.
   - MR106 covers table constraints (`ADD UNIQUE`, `ADD PRIMARY KEY`). Inline `ADD COLUMN … UNIQUE` isn't detected yet.
   - The config file is validated in Go (strict YAML decoding plus value checks) instead of with a JSON schema library. `schemas/config.schema.json` is still published for editors, and a test keeps its keys in sync with the config structs. v0.1 supports `version`, `db.dialect`, `db.version`, `projects`, `git`, `rules` severities, `policy.fail_on`, `policy.require_ignore_reason`, `ignore` and `output`. Rule options such as `lock_timeout_max`, `thresholds`, `codescan`, `capture` and `db.url_env` arrive with the features that use them.
+  - Lock verification (2026-09-17): `tools/lockverify` runs every `lockmodel` entry and the lock conflict matrix against PostgreSQL 12, 13, 14, 15, 16, 17 and 18 in Docker, with 0 mismatches. It uses the Docker CLI and pgx instead of testcontainers-go. Scan claims aren't verified yet, and TRUNCATE and DROP TABLE skip the rewrite check because they replace or remove storage instead of rewriting rows.
+  - Real repositories (2026-09-17, `check --all`): Mattermost (224 golang-migrate migrations), Supabase Auth (75 templated SQL migrations) and Cal.com (595 Prisma migrations) ran with zero crashes and zero rule errors. Supabase Auth led to masking Go template expressions before parsing.
+  - Clean run with 3 changed goose migrations in a 203-migration repository: 40 ms on an M-series Mac, against the 150 ms budget.
+  - Still open for M3: Homebrew tap, install script and the GitHub release job. They need the repository owner, release accounts and a decision on assembling darwin archives built on a separate runner.
   - MR202 treats a small list of known volatile functions as definite, a list of known non-volatile functions as safe, and any other function in a default as a warning with `possible` confidence.
 
 ### M4: Every framework (days 9–14)
