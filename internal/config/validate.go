@@ -16,7 +16,7 @@ var (
 	severities   = []string{"error", "warning", "notice", "off"}
 	failOnLevels = []string{"error", "warning", "notice", "never"}
 	checkModes   = []string{"changed", "all"}
-	formats      = []string{"pretty", "json", "sarif", "github", "markdown"}
+	formats      = []string{"pretty", "json", "sarif", "github", "markdown", "junit"}
 	themes       = []string{"auto", "dark", "light", "mono"}
 	switches     = []string{"auto", "always", "never"}
 	dialects     = []string{"postgres"}

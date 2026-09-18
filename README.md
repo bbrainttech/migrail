@@ -166,7 +166,7 @@ migrail rules
 | `--fail-on` | Exit with code 1 on findings at or above `error` (default), `warning` or `notice`. `never` always exits 0. |
 | `-r`, `--rule` | Only run these rules, by ID or slug. |
 | `--skip-rule` | Skip these rules, by ID or slug. |
-| `-f`, `--format` | `pretty` (default), `json`, `sarif`, `github` or `markdown`. |
+| `-f`, `--format` | `pretty` (default), `json`, `sarif`, `github`, `markdown` or `junit`. |
 | `-d`, `--dir` | Project root to search for migrations. Defaults to the repository root. |
 | `--all` | Check every migration, not only the ones changed since the base branch. |
 | `--base` | Git branch or commit to compare against. |
@@ -207,6 +207,8 @@ Ignored findings are included as suppressed results with their reason.
 ```yaml
 - run: migrail check -f markdown >> "$GITHUB_STEP_SUMMARY"
 ```
+
+`-f junit` writes a JUnit XML report for CI systems that show test results, such as GitLab, Jenkins and CircleCI. Each migration is a test case. It fails when it has findings at or above `--fail-on`, and lower findings are listed in its output.
 
 Exit codes: `0` no failing findings, `1` findings at or above `--fail-on`, `2` usage error, `4` internal error.
 

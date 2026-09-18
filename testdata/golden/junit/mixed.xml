@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="migrail" tests="4" failures="1" errors="0">
+  <testsuite name="migrail" tests="4" failures="1" errors="0" skipped="0">
+    <testcase name="../../testdata/sql/MR101/bad/basic.sql" classname="migrail" file="../../testdata/sql/MR101/bad/basic.sql">
+      <failure message="1 finding at or above error" type="MigrationFindings"><![CDATA[error MR101 ../../testdata/sql/MR101/bad/basic.sql:1 Index creation blocks writes on "orders"
+why: Postgres holds this lock until the whole index is built. INSERT, UPDATE and DELETE on the table wait for the entire build.
+fix: Build the index concurrently, outside a transaction:
+CREATE INDEX CONCURRENTLY idx_orders_status ON orders (status);]]></failure>
+      <system-out><![CDATA[warning MR403 ../../testdata/sql/MR101/bad/basic.sql:1 No lock_timeout before locking DDL
+why: If a long query holds a lock on orders, this statement waits for it, and every query that arrives afterwards queues behind this statement.
+fix: Set a lock timeout at the top of the migration, and retry the migration if it times out:
+SET lock_timeout = '5s';]]></system-out>
+    </testcase>
+    <testcase name="../../testdata/sql/MR101/good/concurrently.sql" classname="migrail" file="../../testdata/sql/MR101/good/concurrently.sql"></testcase>
+    <testcase name="../../testdata/sql/MR201/bad/to_varchar.sql" classname="migrail" file="../../testdata/sql/MR201/bad/to_varchar.sql">
+      <system-out><![CDATA[warning MR201 ../../testdata/sql/MR201/bad/to_varchar.sql:1 Changing the type of "users.name" may rewrite the table
+why: Some changes to this type only update the catalog, such as varchar to text or a longer varchar limit. Other changes rewrite every row of users under an ACCESS EXCLUSIVE lock. migrail can't see the current column type in this migration.
+fix: Change the type with expand and contract instead of rewriting the table in place:
+Add name_new with the new type:
+ALTER TABLE users ADD COLUMN name_new varchar(255);
+Write to both columns and backfill name_new in batches
+Read from name_new, then drop name and rename name_new
+
+warning MR403 ../../testdata/sql/MR201/bad/to_varchar.sql:1 No lock_timeout before locking DDL
+why: If a long query holds a lock on users, this statement waits for it, and every query that arrives afterwards queues behind this statement.
+fix: Set a lock timeout at the top of the migration, and retry the migration if it times out:
+SET lock_timeout = '5s';]]></system-out>
+    </testcase>
+    <testcase name="../../testdata/sql/MR904/good/with_reason.sql" classname="migrail" file="../../testdata/sql/MR904/good/with_reason.sql">
+      <system-out><![CDATA[warning MR403 ../../testdata/sql/MR904/good/with_reason.sql:2 No lock_timeout before locking DDL
+why: If a long query holds a lock on orders, this statement waits for it, and every query that arrives afterwards queues behind this statement.
+fix: Set a lock timeout at the top of the migration, and retry the migration if it times out:
+SET lock_timeout = '5s';]]></system-out>
+    </testcase>
+  </testsuite>
+</testsuites>

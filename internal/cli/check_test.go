@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/json"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/bbrainttech/migrail/internal/golden"
+	"github.com/bbrainttech/migrail/internal/ir"
 	"github.com/bbrainttech/migrail/internal/ui/term"
 )
 
@@ -19,6 +21,7 @@ const (
 	sarifGoldenDir    = "../../testdata/golden/sarif"
 	githubGoldenDir   = "../../testdata/golden/github"
 	markdownGoldenDir = "../../testdata/golden/markdown"
+	junitGoldenDir    = "../../testdata/golden/junit"
 	mr101Basic        = fixtures + "/MR101/bad/basic.sql"
 	projects          = "../../testdata/projects"
 )
@@ -183,8 +186,9 @@ func TestCheckMarkdownGolden(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name  string
-		files []string
+		name   string
+		failOn string
+		files  []string
 	}{
 		{name: "findings", files: []string{
 			mr101Basic,
@@ -193,16 +197,33 @@ func TestCheckMarkdownGolden(t *testing.T) {
 			fixtures + "/MR904/good/with_reason.sql",
 		}},
 		{name: "clean", files: []string{fixtures + "/MR101/good/concurrently.sql"}},
+		{name: "fail_on_never", failOn: failOnNever, files: []string{mr101Basic}},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			args := append([]string{"check", "-f", formatMarkdown, "--db-version", "16"}, tt.files...)
+			failOn := cmp.Or(tt.failOn, string(ir.SeverityError))
+			args := append([]string{"check", "-f", formatMarkdown, "--db-version", "16", "--fail-on", failOn}, tt.files...)
 			run := runCLI(t, "", args...)
 
 			golden.Assert(t, filepath.Join(markdownGoldenDir, tt.name+".md"), run.stdout)
 		})
 	}
+}
+
+func TestCheckJUnitGolden(t *testing.T) {
+	t.Parallel()
+
+	args := []string{
+		"check", "-f", formatJUnit, "--db-version", "16", "--fail-on", string(ir.SeverityError),
+		mr101Basic,
+		fixtures + "/MR101/good/concurrently.sql",
+		fixtures + "/MR201/bad/to_varchar.sql",
+		fixtures + "/MR904/good/with_reason.sql",
+	}
+	run := runCLI(t, "", args...)
+
+	golden.Assert(t, filepath.Join(junitGoldenDir, "mixed.xml"), run.stdout)
 }

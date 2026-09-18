@@ -17,6 +17,7 @@ import (
 	"github.com/bbrainttech/migrail/internal/ir"
 	"github.com/bbrainttech/migrail/internal/report/github"
 	"github.com/bbrainttech/migrail/internal/report/jsonreport"
+	"github.com/bbrainttech/migrail/internal/report/junit"
 	"github.com/bbrainttech/migrail/internal/report/markdown"
 	"github.com/bbrainttech/migrail/internal/report/pretty"
 	"github.com/bbrainttech/migrail/internal/report/sarif"
@@ -36,10 +37,11 @@ const (
 	formatSARIF    = "sarif"
 	formatGitHub   = "github"
 	formatMarkdown = "markdown"
+	formatJUnit    = "junit"
 	failOnNever    = "never"
 )
 
-var formats = []string{formatPretty, formatJSON, formatSARIF, formatGitHub, formatMarkdown}
+var formats = []string{formatPretty, formatJSON, formatSARIF, formatGitHub, formatMarkdown, formatJUnit}
 
 var failOnLevels = []string{string(ir.SeverityError), string(ir.SeverityWarning), string(ir.SeverityNotice), failOnNever}
 
@@ -77,7 +79,7 @@ func newCheckCommand(ui *uiFlags) *cobra.Command {
 	}
 
 	flags := cmd.Flags()
-	flags.StringVarP(&opts.format, "format", "f", formatPretty, "output format: pretty, json, sarif, github or markdown")
+	flags.StringVarP(&opts.format, "format", "f", formatPretty, "output format: pretty, json, sarif, github, markdown or junit")
 	flags.StringVar(&opts.dbVersion, "db-version", "", "PostgreSQL major version in production, such as 16 (default: 12)")
 	flags.StringVar(&opts.failOn, "fail-on", string(ir.SeverityError), "exit with code 1 on findings at or above: error, warning, notice or never")
 	flags.StringSliceVarP(&opts.rules, "rule", "r", nil, "only run these rules, by ID or slug")
@@ -210,6 +212,10 @@ func writeCheckReport(
 	result analyze.Result,
 	elapsed time.Duration,
 ) error {
+	if opts.format == formatJUnit {
+		return junit.Write(cmd.OutOrStdout(), junit.Input{Migrations: migrations, Result: result, FailOn: opts.failOn})
+	}
+
 	if opts.format == formatMarkdown {
 		return markdown.Write(cmd.OutOrStdout(), markdown.Input{
 			ToolVersion: currentBuildInfo().Version,
@@ -369,7 +375,7 @@ func checkOutcome(result analyze.Result, failOn string, summarized bool) error {
 	failing := 0
 
 	for _, finding := range result.Findings {
-		if finding.Suppressed == nil && finding.Severity.AtLeast(ir.Severity(failOn)) {
+		if finding.Suppressed == nil && finding.Severity.FailsAt(ir.Severity(failOn)) {
 			failing++
 		}
 	}
