@@ -1337,7 +1337,7 @@ Every screen above is a golden snapshot at widths **60, 80, 120** × profiles **
 | Docker | `docker run --rm -v $PWD:/src ghcr.io/<owner>/migrail` | distroless/static image |
 | Scoop / winget | `scoop install migrail` | manifests |
 | Linux packages | `.deb`, `.rpm`, `.apk` | nfpm via goreleaser |
-| Script | `curl -fsSL https://<docs-domain>/install.sh \| sh` | detects OS/arch, verifies checksum |
+| Script | `curl -fsSL https://<docs-domain>/install.sh \| sh` | detects OS/arch, verifies checksum; `--uninstall` removes the binary and points Homebrew installs to `brew uninstall` |
 | GitHub Action | `<owner>/migrail-action@v1` | §20.2 |
 
 Every wrapper package version == binary version. A single release pipeline publishes all channels.

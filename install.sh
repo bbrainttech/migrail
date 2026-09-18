@@ -4,16 +4,18 @@ set -eu
 repo="bbrainttech/migrail"
 base_url="https://github.com/$repo/releases"
 version=""
+uninstall=false
 install_dir="${HOME:-}/.local/bin"
 
 usage() {
 	cat <<EOF
 Install the migrail binary for this machine.
 
-Usage: install.sh [--version vX.Y.Z] [--dir DIR]
+Usage: install.sh [--version vX.Y.Z] [--dir DIR] [--uninstall]
 
-  --version  Release to install. Defaults to the latest release.
-  --dir      Directory to install into. Defaults to ~/.local/bin.
+  --version    Release to install. Defaults to the latest release.
+  --dir        Directory to install into. Defaults to ~/.local/bin.
+  --uninstall  Remove migrail from DIR instead of installing it.
 EOF
 }
 
@@ -37,6 +39,10 @@ while [ $# -gt 0 ]; do
 		[ $# -ge 2 ] || fail "--dir needs a value"
 		install_dir="$2"
 		shift 2
+		;;
+	--uninstall)
+		uninstall=true
+		shift
 		;;
 	-h | --help)
 		usage
@@ -84,6 +90,27 @@ sha256_of() {
 		fail "sha256sum or shasum is required to verify the download"
 	fi
 }
+
+uninstall_migrail() {
+	target="$install_dir/migrail"
+	if [ ! -e "$target" ]; then
+		found="$(command -v migrail 2>/dev/null || true)"
+		case "$(readlink "$found" 2>/dev/null || true)" in
+		*/Caskroom/migrail/*) fail "migrail was installed with Homebrew. Run: brew uninstall migrail" ;;
+		esac
+		if [ -n "$found" ]; then
+			fail "migrail is not in $install_dir, but $found is on your PATH. Run again with --dir $(dirname "$found")"
+		fi
+		fail "migrail is not installed in $install_dir"
+	fi
+	rm -f "$target" || fail "could not remove $target. Check that you can write to $install_dir"
+	echo "Removed $target" >&2
+}
+
+if [ "$uninstall" = true ]; then
+	uninstall_migrail
+	exit 0
+fi
 
 need curl
 need tar

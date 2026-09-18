@@ -103,6 +103,31 @@ cd migrail
 make build
 ```
 
+### Uninstalling
+
+migrail doesn't write any files besides its binary, so removing the binary uninstalls it.
+
+If you installed it with Homebrew:
+
+```
+brew uninstall migrail
+brew untap bbrainttech/tap
+```
+
+If you used the install script, delete the binary from the directory you installed to, `~/.local/bin` by default:
+
+```
+rm ~/.local/bin/migrail
+```
+
+Releases after v0.1.0 can also do this for you. Run the install script with `--uninstall`, and add `--dir` if you installed somewhere else:
+
+```
+curl -fsSL https://github.com/bbrainttech/migrail/releases/latest/download/install.sh | sh -s -- --uninstall
+```
+
+On Windows, delete `migrail.exe` from the folder you put it in, and remove that folder from your `PATH` if you added it only for migrail.
+
 ## Usage
 
 From anywhere in your repository, find the migrations, detect the migration tool and check them:
