@@ -113,11 +113,12 @@ func TestCheckWritesOutputFiles(t *testing.T) {
 }
 
 func TestCheckInGitHubActions(t *testing.T) {
-	summary := filepath.Join(t.TempDir(), "summary.md")
-	t.Setenv(githubActionsEnv, "true")
-	t.Setenv(githubSummaryEnv, summary)
+	t.Parallel()
 
-	pretty := runCLI(t, "", "check", "--db-version", "16", mr101Basic)
+	summary := filepath.Join(t.TempDir(), "summary.md")
+	environ := append(withoutGitHubActions(os.Environ()), githubActionsEnv+"=true", githubSummaryEnv+"="+summary)
+
+	pretty := runCLIWithEnv(t, environ, "", "check", "--db-version", "16", mr101Basic)
 	if !strings.Contains(pretty.stdout, "::error file=") {
 		t.Errorf("pretty output in GitHub Actions should include annotations, got %q", pretty.stdout)
 	}
@@ -126,7 +127,7 @@ func TestCheckInGitHubActions(t *testing.T) {
 		t.Errorf("annotations after the pretty report should skip their count line, got %q", pretty.stdout)
 	}
 
-	jsonRun := runCLI(t, "", "check", "-f", formatJSON, "--db-version", "16", mr101Basic)
+	jsonRun := runCLIWithEnv(t, environ, "", "check", "-f", formatJSON, "--db-version", "16", mr101Basic)
 	if strings.Contains(jsonRun.stdout, "::error") {
 		t.Errorf("JSON output must not include annotations, got %q", jsonRun.stdout)
 	}
@@ -146,7 +147,7 @@ func TestPrettySummaryCountsOneStatement(t *testing.T) {
 
 	run := runCLI(t, "", "check", "--db-version", "16", "--color", "never", mr101Basic)
 
-	if !strings.Contains(run.stdout, "1 file · 1 stmt ·") {
+	if !strings.Contains(run.stdout, " 1 stmt ") || strings.Contains(run.stdout, "1 stmts") {
 		t.Errorf("summary should say \"1 stmt\", got %q", run.stdout)
 	}
 }

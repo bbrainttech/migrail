@@ -45,7 +45,7 @@ func internalError(err error) error {
 }
 
 func Execute(ctx context.Context, args []string, stdout, stderr io.Writer) int {
-	root, ui := newRoot(stdout, stderr)
+	root, ui := newRoot(stdout, stderr, os.Environ())
 	root.SetArgs(args)
 
 	err := root.ExecuteContext(ctx)
@@ -139,14 +139,14 @@ func sentence(message string) string {
 	return strings.ToUpper(message[:1]) + message[1:]
 }
 
-func newRootCommand(stdout, stderr io.Writer) *cobra.Command {
-	root, _ := newRoot(stdout, stderr)
+func newRootCommand(stdout, stderr io.Writer, environ []string) *cobra.Command {
+	root, _ := newRoot(stdout, stderr, environ)
 
 	return root
 }
 
-func newRoot(stdout, stderr io.Writer) (*cobra.Command, *uiFlags) {
-	ui := &uiFlags{color: string(term.ColorAuto), theme: string(term.ThemeAuto)}
+func newRoot(stdout, stderr io.Writer, environ []string) (*cobra.Command, *uiFlags) {
+	ui := &uiFlags{color: string(term.ColorAuto), theme: string(term.ThemeAuto), env: term.NewEnv(environ)}
 
 	root := &cobra.Command{
 		Use:   "migrail",

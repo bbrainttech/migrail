@@ -157,7 +157,7 @@ func runCheck(ctx context.Context, cmd *cobra.Command, args []string, opts check
 		return err
 	}
 
-	if err := writeGitHubSummary(report); err != nil {
+	if err := writeGitHubSummary(report, opts.ui.env); err != nil {
 		return err
 	}
 

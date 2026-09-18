@@ -5,6 +5,7 @@ import (
 	"cmp"
 	"context"
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -35,9 +36,15 @@ type checkRun struct {
 func runCLI(t *testing.T, stdin string, args ...string) checkRun {
 	t.Helper()
 
+	return runCLIWithEnv(t, withoutGitHubActions(os.Environ()), stdin, args...)
+}
+
+func runCLIWithEnv(t *testing.T, environ []string, stdin string, args ...string) checkRun {
+	t.Helper()
+
 	var stdout, stderr bytes.Buffer
 
-	root := newRootCommand(&stdout, &stderr)
+	root := newRootCommand(&stdout, &stderr, environ)
 	root.SetIn(strings.NewReader(stdin))
 	root.SetArgs(args)
 
@@ -226,4 +233,10 @@ func TestCheckJUnitGolden(t *testing.T) {
 	run := runCLI(t, "", args...)
 
 	golden.Assert(t, filepath.Join(junitGoldenDir, "mixed.xml"), run.stdout)
+}
+
+func withoutGitHubActions(environ []string) []string {
+	return slices.DeleteFunc(slices.Clone(environ), func(entry string) bool {
+		return strings.HasPrefix(entry, githubActionsEnv+"=") || strings.HasPrefix(entry, githubSummaryEnv+"=")
+	})
 }

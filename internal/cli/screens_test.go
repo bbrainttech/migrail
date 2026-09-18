@@ -31,7 +31,7 @@ func TestHelpGolden(t *testing.T) {
 			t.Run(golden.Name(profile, width), func(t *testing.T) {
 				t.Parallel()
 
-				root := newRootCommand(nil, nil)
+				root := newRootCommand(nil, nil, nil)
 				caps := term.Capabilities{Width: width}
 				th := theme.New(profile.Color, true, profile.Unicode)
 

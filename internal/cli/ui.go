@@ -26,6 +26,7 @@ type uiFlags struct {
 	theme        string
 	ascii        bool
 	noHyperlinks bool
+	env          term.Env
 }
 
 func (f *uiFlags) register(cmd *cobra.Command) {

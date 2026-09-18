@@ -120,16 +120,14 @@ func writeStdout(w io.Writer, opts checkOptions, settings term.Settings, report 
 		return err
 	}
 
-	if opts.format == formatPretty && inGitHubActions(term.NewEnv(os.Environ())) {
+	if opts.format == formatPretty && inGitHubActions(opts.ui.env) {
 		return github.Write(w, github.Input{Result: report.result, SkipCount: true})
 	}
 
 	return nil
 }
 
-func writeGitHubSummary(report checkReport) error {
-	env := term.NewEnv(os.Environ())
-
+func writeGitHubSummary(report checkReport, env term.Env) error {
 	path := env[githubSummaryEnv]
 	if !inGitHubActions(env) || path == "" {
 		return nil
