@@ -82,7 +82,7 @@ func count(findings []ir.Finding, failOn ir.Severity) counts {
 			continue
 		}
 
-		if finding.Severity.AtLeast(failOn) {
+		if finding.Severity.FailsAt(failOn) {
 			c.failing++
 		}
 

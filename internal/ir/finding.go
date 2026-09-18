@@ -30,6 +30,10 @@ func (s Severity) AtLeast(threshold Severity) bool {
 	return s.Rank() > 0 && s.Rank() >= threshold.Rank()
 }
 
+func (s Severity) FailsAt(failOn Severity) bool {
+	return failOn.Rank() > 0 && s.AtLeast(failOn)
+}
+
 type Confidence string
 
 const (
