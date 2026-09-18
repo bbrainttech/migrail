@@ -82,7 +82,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - uses: bbrainttech/migrail@v0.2.0
+      - uses: bbrainttech/migrail@v0.1.1
         with:
           db-version: "16"
 ```
@@ -104,8 +104,6 @@ On other CI systems, install migrail and run `migrail check`. Write reports for 
 ```
 migrail check -o junit=reports/migrail.xml
 ```
-
-> The GitHub Action, `-o` and the `sarif`, `github`, `markdown` and `junit` formats ship in v0.2.0, the next release. Until then, [build from source](#build-from-source) to try them.
 
 ## What it catches
 
@@ -249,10 +247,10 @@ output:
 | Method | Install | Uninstall |
 | --- | --- | --- |
 | Homebrew | `brew install bbrainttech/tap/migrail` | `brew uninstall migrail` |
-| Install script | `curl -fsSL https://github.com/bbrainttech/migrail/releases/latest/download/install.sh \| sh` | `rm ~/.local/bin/migrail` |
+| Install script | `curl -fsSL https://github.com/bbrainttech/migrail/releases/latest/download/install.sh \| sh` | same command with `\| sh -s -- --uninstall` |
 | Windows | download the zip from the [releases page](https://github.com/bbrainttech/migrail/releases) | delete `migrail.exe` |
 
-The install script puts migrail in `~/.local/bin`. Pass `--version v0.1.0` to pin a release or `--dir` to choose the folder. Releases after v0.1.0 also accept `--uninstall`. migrail writes no other files, so removing the binary uninstalls it.
+The install script puts migrail in `~/.local/bin`. Pass `--version v0.1.1` to pin a release or `--dir` to choose the folder. To uninstall, run it with `--uninstall`. migrail writes no other files, so removing the binary uninstalls it.
 
 Each release has `checksums.txt`, a cosign signature for it and an SBOM for every archive. The install script checks the checksum.
 
