@@ -15,7 +15,7 @@
       "confidence": "definite"
     }
   ],
-  "bad/drop_index.sql": [
+  "bad/create_unique_index.sql": [
     {
       "line": 2,
       "column": 1,
@@ -23,7 +23,7 @@
       "confidence": "definite"
     }
   ],
-  "bad/refresh_matview.sql": [
+  "bad/drop_index.sql": [
     {
       "line": 2,
       "column": 1,

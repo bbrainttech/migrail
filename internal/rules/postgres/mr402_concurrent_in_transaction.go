@@ -66,8 +66,6 @@ func concurrentCommand(stmt *pg_query.Node) string {
 		return "DROP INDEX CONCURRENTLY"
 	case stmt.GetReindexStmt() != nil && hasOption(stmt.GetReindexStmt().GetParams(), "concurrently"):
 		return "REINDEX CONCURRENTLY"
-	case stmt.GetRefreshMatViewStmt().GetConcurrent():
-		return "REFRESH MATERIALIZED VIEW CONCURRENTLY"
 	default:
 		return ""
 	}
