@@ -288,7 +288,8 @@ migrail/
 ├── packaging/
 │   ├── npm/  pypi/  rubygems/  composer/  homebrew/  scoop/  docker/  nfpm/
 │   └── install.sh
-├── action/                       # GitHub Action (action.yml, composite)
+├── action.yml                    # GitHub Action (composite), used as <owner>/migrail@<tag>
+├── action/                       # scripts the action runs: setup.sh, check.sh, comment.sh
 ├── integrations/                 # gitlab-ci template, pre-commit hooks, bitbucket pipe
 ├── testdata/
 │   ├── sql/                      # rule fixtures
@@ -1270,8 +1271,10 @@ Every screen above is a golden snapshot at widths **60, 80, 120** × profiles **
 | `gitlab` | GitLab Code Quality | codequality JSON |
 
 ### 20.2 GitHub Action (`action/`)
+Decided 2026-09-18: the action lives at the root of this repository (`action.yml`), so it's versioned with the release tags and can be listed on the Marketplace.
+
 ```yaml
-- uses: <owner>/migrail-action@v1
+- uses: bbrainttech/migrail@v0.2.0
   with:
     version: latest          # or pinned
     fail-on: error
@@ -1282,6 +1285,14 @@ Every screen above is a golden snapshot at widths **60, 80, 120** × profiles **
 - Downloads the binary with checksum verification (cached across runs).
 - PR comment: summary table + findings as collapsible sections + "all clear ✔" edit when fixed.
 - Only needs `pull-requests: write` for comments; works read-only otherwise.
+
+- Implemented 2026-09-18 (composite action, Linux and macOS runners):
+  - `version` defaults to the action's own tag (`github.action_ref` when it looks like `vX.Y.Z`), else the latest release; `installed` uses a migrail already on PATH. Installs with the repository's `install.sh` (checksum verified) into `$RUNNER_TOOL_CACHE/migrail/<version>/<arch>` and reuses it when present.
+  - `check.sh` runs `migrail check` with `-o` files for JSON (to count findings), SARIF and the comment, records the exit code, and a final step exits with it, so the comment and SARIF upload still run on failing checks.
+  - Sticky comment: found by a `<!-- migrail-report -->` marker and updated in place; when a pull request is clean it's updated to the clean report, and nothing is posted if there was never a finding. Missing permissions produce a warning, not a failure.
+  - SARIF upload uses `github/codeql-action/upload-sarif@v3` with `category: migrail`. Off by default because it needs `security-events: write` and code scanning.
+  - Inputs: `version`, `args`, `fail-on`, `db-version`, `working-directory`, `comment` (default true), `sarif` (default false), `token`. Outputs: `exit-code`, `findings`, `sarif-file`. `db-url` arrives with live mode.
+  - CI runs the action with `uses: ./` against the CI build and checks its outputs and job summary.
 
 ### 20.3 Other integrations
 - **GitLab CI** template (`integrations/gitlab/migrail.gitlab-ci.yml`), code quality report.

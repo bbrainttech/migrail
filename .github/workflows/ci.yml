@@ -105,3 +105,37 @@ jobs:
         run: |
           chmod +x "${{ matrix.binary }}"
           "./${{ matrix.binary }}" version
+
+  action:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v5
+        with:
+          name: binaries-linux-windows
+          path: ${{ runner.temp }}/binaries
+      - name: Put the CI build on PATH
+        shell: bash
+        run: |
+          dir="${{ runner.temp }}/binaries/linux-amd64_linux_amd64_v1"
+          chmod +x "$dir/migrail"
+          echo "$dir" >> "$GITHUB_PATH"
+      - name: Run the action on migrations with findings
+        id: migrail
+        uses: ./
+        with:
+          version: installed
+          args: testdata/projects/goose
+          db-version: "16"
+          fail-on: never
+          comment: "false"
+      - name: Check the action outputs
+        shell: bash
+        env:
+          EXIT_CODE: ${{ steps.migrail.outputs.exit-code }}
+          FINDINGS: ${{ steps.migrail.outputs.findings }}
+        run: |
+          test "$EXIT_CODE" = "0" || { echo "exit-code is '$EXIT_CODE', want 0"; exit 1; }
+          test "$FINDINGS" -gt 0 || { echo "findings is '$FINDINGS', want more than 0"; exit 1; }
+          grep -q "## migrail" "$GITHUB_STEP_SUMMARY" || { echo "job summary has no migrail report"; exit 1; }

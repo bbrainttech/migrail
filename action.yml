@@ -1,0 +1,96 @@
+name: migrail
+description: Catch dangerous database migrations before they reach production
+author: bbrainttech
+branding:
+  icon: shield
+  color: blue
+
+inputs:
+  version:
+    description: >-
+      migrail release to install, such as v0.2.0. Defaults to the release that
+      matches this action's tag, or the latest release. Use "installed" to run
+      a migrail that is already on PATH.
+    default: ""
+  args:
+    description: Extra arguments for migrail check, such as paths, --all or --base.
+    default: ""
+  fail-on:
+    description: Fail the step on findings at or above error, warning or notice. Use never to only report.
+    default: error
+  db-version:
+    description: PostgreSQL major version you run in production, such as 16.
+    default: ""
+  working-directory:
+    description: Directory to run migrail in. SARIF paths are relative to it, so keep the repository root for code scanning.
+    default: "."
+  comment:
+    description: >-
+      Post the report as a pull request comment and update it on each push.
+      Needs the pull-requests write permission.
+    default: "true"
+  sarif:
+    description: >-
+      Upload findings to GitHub code scanning. Needs the security-events write
+      permission, and code scanning must be available for the repository.
+    default: "false"
+  token:
+    description: Token used for the pull request comment.
+    default: ${{ github.token }}
+
+outputs:
+  exit-code:
+    description: Exit code of migrail check.
+    value: ${{ steps.check.outputs.exit-code }}
+  findings:
+    description: Number of findings that weren't ignored.
+    value: ${{ steps.check.outputs.findings }}
+  sarif-file:
+    description: Path of the SARIF report, when sarif is true.
+    value: ${{ steps.check.outputs.sarif-file }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install migrail
+      shell: bash
+      env:
+        MIGRAIL_VERSION: ${{ inputs.version }}
+        ACTION_REF: ${{ github.action_ref }}
+      run: sh "$GITHUB_ACTION_PATH/action/setup.sh"
+
+    - name: Check migrations
+      id: check
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        MIGRAIL_ARGS: ${{ inputs.args }}
+        MIGRAIL_FAIL_ON: ${{ inputs.fail-on }}
+        MIGRAIL_DB_VERSION: ${{ inputs.db-version }}
+        MIGRAIL_SARIF: ${{ inputs.sarif }}
+        MIGRAIL_COMMENT: ${{ inputs.comment }}
+      run: sh "$GITHUB_ACTION_PATH/action/check.sh"
+
+    - name: Upload SARIF
+      if: ${{ always() && inputs.sarif == 'true' && steps.check.outputs.sarif-file != '' }}
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: ${{ steps.check.outputs.sarif-file }}
+        category: migrail
+
+    - name: Comment on the pull request
+      if: ${{ always() && inputs.comment == 'true' && github.event.pull_request.number && steps.check.outputs.comment-file != '' }}
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        COMMENT_FILE: ${{ steps.check.outputs.comment-file }}
+        FINDINGS: ${{ steps.check.outputs.findings }}
+      run: sh "$GITHUB_ACTION_PATH/action/comment.sh"
+
+    - name: Report result
+      if: ${{ always() && steps.check.outputs.exit-code != '' }}
+      shell: bash
+      env:
+        EXIT_CODE: ${{ steps.check.outputs.exit-code }}
+      run: exit "$EXIT_CODE"
