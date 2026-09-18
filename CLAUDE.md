@@ -102,11 +102,28 @@ MIGRAIL_TEST_DATABASE_URL=
 
 Update the README in the same change whenever a user-visible feature ships or changes: move it from planned to available, add real install and usage commands, refresh examples and output samples, and tick the roadmap. Edit the existing sections in place rather than appending notes. Never document something that doesn't work yet as if it does; label planned features as planned.
 
+## Keeping docs in sync
+
+Every change that adds a feature or changes behavior updates the docs it affects **in the same commit**. Code and docs never ship out of step. Before committing, check each place below and update the ones the change touches:
+
+| Change | Update |
+|---|---|
+| New or changed command, flag, format, config key or install step | `README.md` usage/flag tables and examples, command help text, help goldens |
+| New or changed rule, or a rule's behavior, message or fix | the rule's `.md` doc next to it, `testdata/sql/<ID>/` fixtures, README rule table |
+| Config keys or allowed values | `internal/config/schema.json` and `schemas/config.schema.json` (keep them identical), config validation, README config example |
+| Output formats or report fields | the reporter's goldens, README output section, `schemas/` when a schema exists |
+| Adapter or transaction-mode behavior | README "Supported stacks" and conventions text, `PLAN.md` §12.3 table |
+| Scope, design or plan decision | `PLAN.md` (the relevant section and the milestone's implementation notes) |
+| Install, uninstall or release process | README Installation, `install.sh --help`, `PLAN.md` §22 |
+| Milestone "Done when" met | README roadmap checkbox |
+
+If a change needs no doc update, that's fine, but decide it deliberately rather than by skipping the check. Mention in the final summary which docs were updated.
+
 ## Workflow
 
 1. Read the milestone and sections involved in `PLAN.md`.
 2. Implement in small vertical slices. Each slice builds, passes tests and lint.
 3. For terminal output, run the binary and look at the result at 60, 80 and 120 columns before updating goldens.
 4. Run `/code-review` at the end of a milestone.
-5. Commit and push after finishing each fix, feature or user request, once `make lint test` passes. Use small focused commits with a `scope: summary` message, and push to the current branch. Never commit secrets or `.env*` files other than `.env.example`.
+5. Commit and push after finishing each fix, feature or user request, once `make lint test` passes and the affected docs are updated (see "Keeping docs in sync"). Use small focused commits with a `scope: summary` message, and push to the current branch. Never commit secrets or `.env*` files other than `.env.example`.
 6. When a milestone's "Done when" criteria are met, tick its box in the README roadmap in the same commit.
