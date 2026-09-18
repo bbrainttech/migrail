@@ -1292,7 +1292,7 @@ Decided 2026-09-18: the action lives at the root of this repository (`action.yml
   - Sticky comment: found by a `<!-- migrail-report -->` marker and updated in place; when a pull request is clean it's updated to the clean report, and nothing is posted if there was never a finding. Missing permissions produce a warning, not a failure.
   - SARIF upload uses `github/codeql-action/upload-sarif@v3` with `category: migrail`. Off by default because it needs `security-events: write` and code scanning.
   - Inputs: `version`, `args`, `fail-on`, `db-version`, `working-directory`, `comment` (default true), `sarif` (default false), `token`. Outputs: `exit-code`, `findings`, `sarif-file`. `db-url` arrives with live mode.
-  - CI runs the action with `uses: ./` against the CI build and checks its outputs and job summary.
+  - CI runs the action with `uses: ./` against the CI build and checks its `exit-code` and `findings` outputs. The job summary can't be checked from a later step, because each step gets its own `$GITHUB_STEP_SUMMARY` file; the CLI test covers it.
 
 ### 20.3 Other integrations
 - **GitLab CI** template (`integrations/gitlab/migrail.gitlab-ci.yml`), code quality report.

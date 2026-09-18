@@ -138,4 +138,3 @@ jobs:
         run: |
           test "$EXIT_CODE" = "0" || { echo "exit-code is '$EXIT_CODE', want 0"; exit 1; }
           test "$FINDINGS" -gt 0 || { echo "findings is '$FINDINGS', want more than 0"; exit 1; }
-          grep -q "## migrail" "$GITHUB_STEP_SUMMARY" || { echo "job summary has no migrail report"; exit 1; }
