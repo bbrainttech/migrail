@@ -204,16 +204,16 @@ migrail check -o migrail.sarif -o summary.md -o junit=reports/migrail.xml
 
 Ignored findings are included as suppressed results with their reason.
 
-`-f github` prints GitHub Actions workflow commands, so each finding shows up as an annotation on the changed line in the pull request:
+In GitHub Actions, `migrail check` does this without extra flags. It prints the usual report, adds an annotation for each finding on the changed line in the pull request, and appends a markdown report to the job summary. `-f github` prints only the annotations:
 
 ```yaml
-- run: migrail check -f github
+- run: migrail check
 ```
 
-`-f markdown` writes a summary table and one collapsible section per finding, with the statement, lock, why and fix. Use it for pull request comments or the Actions job summary:
+`-f markdown` writes a summary table and one collapsible section per finding, with the statement, lock, why and fix. Use it for pull request comments, or for a job summary outside GitHub Actions:
 
-```yaml
-- run: migrail check -f markdown >> "$GITHUB_STEP_SUMMARY"
+```
+migrail check -o summary.md
 ```
 
 `-f junit` writes a JUnit XML report for CI systems that show test results, such as GitLab, Jenkins and CircleCI. Each migration is a test case. It fails when it has findings at or above `--fail-on`, and lower findings are listed in its output.

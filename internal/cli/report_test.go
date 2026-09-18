@@ -111,3 +111,32 @@ func TestCheckWritesOutputFiles(t *testing.T) {
 		t.Errorf("findings.txt contains color codes: %q", files["findings.txt"])
 	}
 }
+
+func TestCheckInGitHubActions(t *testing.T) {
+	summary := filepath.Join(t.TempDir(), "summary.md")
+	t.Setenv(githubActionsEnv, "true")
+	t.Setenv(githubSummaryEnv, summary)
+
+	pretty := runCLI(t, "", "check", "--db-version", "16", mr101Basic)
+	if !strings.Contains(pretty.stdout, "::error file=") {
+		t.Errorf("pretty output in GitHub Actions should include annotations, got %q", pretty.stdout)
+	}
+
+	if strings.Contains(pretty.stdout, "migrail: 1 error") {
+		t.Errorf("annotations after the pretty report should skip their count line, got %q", pretty.stdout)
+	}
+
+	jsonRun := runCLI(t, "", "check", "-f", formatJSON, "--db-version", "16", mr101Basic)
+	if strings.Contains(jsonRun.stdout, "::error") {
+		t.Errorf("JSON output must not include annotations, got %q", jsonRun.stdout)
+	}
+
+	data, err := os.ReadFile(summary)
+	if err != nil {
+		t.Fatalf("read job summary: %v", err)
+	}
+
+	if got := strings.Count(string(data), "## migrail"); got != 2 {
+		t.Errorf("job summary should hold one report per run (2), got %d:\n%s", got, data)
+	}
+}

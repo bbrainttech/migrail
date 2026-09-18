@@ -24,8 +24,10 @@ import (
 )
 
 const (
-	outputFileMode = 0o644
-	outputDirMode  = 0o755
+	outputFileMode   = 0o644
+	outputDirMode    = 0o755
+	githubActionsEnv = "GITHUB_ACTIONS"
+	githubSummaryEnv = "GITHUB_STEP_SUMMARY"
 )
 
 var formatsByExtension = map[string]string{
@@ -114,7 +116,50 @@ func writeOutputs(report checkReport, targets []outputTarget) error {
 }
 
 func writeStdout(w io.Writer, opts checkOptions, settings term.Settings, report checkReport) error {
-	return renderReport(w, opts.format, report, settings, opts.compact || opts.quiet)
+	if err := renderReport(w, opts.format, report, settings, opts.compact || opts.quiet); err != nil {
+		return err
+	}
+
+	if opts.format == formatPretty && inGitHubActions(term.NewEnv(os.Environ())) {
+		return github.Write(w, github.Input{Result: report.result, SkipCount: true})
+	}
+
+	return nil
+}
+
+func writeGitHubSummary(report checkReport) error {
+	env := term.NewEnv(os.Environ())
+
+	path := env[githubSummaryEnv]
+	if !inGitHubActions(env) || path == "" {
+		return nil
+	}
+
+	var buffer bytes.Buffer
+	if err := renderReport(&buffer, formatMarkdown, report, term.Settings{}, false); err != nil {
+		return internalError(err)
+	}
+
+	file, err := os.OpenFile(filepath.Clean(path), os.O_APPEND|os.O_CREATE|os.O_WRONLY, outputFileMode)
+	if err != nil {
+		return fmt.Errorf("write GitHub job summary %s: %w", path, err)
+	}
+
+	if _, err := file.Write(buffer.Bytes()); err != nil {
+		_ = file.Close()
+
+		return fmt.Errorf("write GitHub job summary %s: %w", path, err)
+	}
+
+	if err := file.Close(); err != nil {
+		return fmt.Errorf("write GitHub job summary %s: %w", path, err)
+	}
+
+	return nil
+}
+
+func inGitHubActions(env term.Env) bool {
+	return env[githubActionsEnv] == "true"
 }
 
 func renderReport(w io.Writer, format string, report checkReport, settings term.Settings, compact bool) error {

@@ -22,7 +22,8 @@ var (
 )
 
 type Input struct {
-	Result analyze.Result
+	Result    analyze.Result
+	SkipCount bool
 }
 
 func Write(w io.Writer, in Input) error {
@@ -50,13 +51,21 @@ func Write(w io.Writer, in Input) error {
 			messageEscaper.Replace(fmt.Sprintf("%s failed on %s: %s", e.RuleID, e.MigrationID, e.Message)))
 	}
 
+	if in.SkipCount {
+		return flush(w, out.String())
+	}
+
 	fmt.Fprintf(&out, "migrail: %s, %s, %s\n",
 		count(counts[ir.SeverityError], "error", "errors"),
 		count(counts[ir.SeverityWarning], "warning", "warnings"),
 		count(counts[ir.SeverityNotice], "notice", "notices"),
 	)
 
-	if _, err := io.WriteString(w, out.String()); err != nil {
+	return flush(w, out.String())
+}
+
+func flush(w io.Writer, text string) error {
+	if _, err := io.WriteString(w, text); err != nil {
 		return fmt.Errorf("write github annotations: %w", err)
 	}
 

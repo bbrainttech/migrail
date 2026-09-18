@@ -959,6 +959,7 @@ CREATE INDEX idx_orders_status ON orders (status);
 
 ### 18.5 CI auto-detection (`--ci` or env `CI=true`)
 - GitHub Actions → pretty (no color unless forced) + `github` annotations + job summary markdown written to `$GITHUB_STEP_SUMMARY`.
+  - Implemented 2026-09-18: when `GITHUB_ACTIONS=true`, a `pretty` stdout run appends the annotations (without their count line) after the report, and every run appends the markdown report to `$GITHUB_STEP_SUMMARY` when it's set. Other `-f` formats on stdout stay untouched.
 - GitLab → pretty + `codequality` JSON if `--output` given.
 - Everything else → pretty plain.
 
