@@ -1,17 +1,11 @@
 # migrail
 
-Catch dangerous database migrations before they take production down.
+migrail checks your database migrations before you deploy them. It tells you which statements will lock a table, rewrite it or break the running app, and shows how to fix each one.
 
-migrail reads your migrations the way your database will run them. It tells you which statements will lock a table, which will rewrite one, and which will break the code still running during a deploy. Each finding includes a fix written in your framework's syntax.
-
-It's free and open source. You don't need an account or a config file, and it works on the migrations you already have.
-
-> migrail is in early development. v0.1 checks PostgreSQL migrations written in SQL. Framework migrations such as Django, Rails and Laravel arrive in v0.2.
-
-## What it looks like
+It's a free, open source CLI for PostgreSQL. No account, no config file, no database connection needed.
 
 ```
-$ migrail check db/migrations/20260917101500_add_orders_index.sql --db-version 16
+$ migrail check --db-version 16
 
 migrail 0.1.0 · postgres 16 · 1 file
 
@@ -20,7 +14,7 @@ migrail 0.1.0 · postgres 16 · 1 file
   ✖ error MR101 Index creation blocks writes on "orders"
 
      ╭─ db/migrations/20260917101500_add_orders_index.sql:2:1
-   1 │ BEGIN;
+   1 │ SET lock_timeout = '5s';
    2 │ CREATE INDEX idx_orders_created_at ON orders (created_at);
      │ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
      │
@@ -32,306 +26,266 @@ migrail 0.1.0 · postgres 16 · 1 file
                 CREATE INDEX CONCURRENTLY idx_orders_created_at ON orders (created_at);
 
 ────────────────────────────────────────────────────────────────────────────────
-  ✖ 1 error  ▲ 0 warnings  ● 0 notices                    1 file · 3 stmts · 6ms
+  ✖ 1 error  ▲ 0 warnings  ● 0 notices                   1 file · 2 stmts · 6ms
   Failing: 1 finding at or above "error"
 ```
 
-In a terminal, severities, table names and SQL are colored. Output adapts to the terminal width, and falls back to plain text with `NO_COLOR`, to ASCII symbols with `--ascii`, and to one line per finding below 60 columns.
+## Get started
 
-## What it checks
-
-- **Locks.** Statements that block reads or writes, such as an index built without `CONCURRENTLY` or a foreign key added without `NOT VALID`.
-- **Table rewrites.** Column type changes and volatile defaults that rewrite the whole table under an exclusive lock.
-- **Running code.** Dropping or renaming a column that your application still uses.
-- **Transactions.** `CONCURRENTLY` inside a transaction, a missing `lock_timeout`, or validating a constraint in the same transaction that added it.
-- **Data safety.** `TRUNCATE`, `DROP TABLE`, and `UPDATE` or `DELETE` without `WHERE`.
-
-With an optional read-only connection to staging, migrail also estimates the impact from real table sizes, for example how long writes stay blocked.
-
-## Why migrail
-
-migrail is built around four commitments:
-
-- **Your framework, not raw SQL.** Fixes use your framework's syntax. Rails users get `disable_ddl_transaction!` and `algorithm: :concurrently`. Django users get `AddIndexConcurrently` and `atomic = False`.
-- **It knows your code.** Before you drop or rename a column, migrail will search your application for queries and models that still use it.
-- **Lock claims are tested.** `make lockverify` checks every lock mode and rewrite claim in migrail's lock model against real PostgreSQL 12 to 18 in Docker, and CI runs it nightly.
-- **Every check is free.** The CLI and CI integration will have no paid tier and no login.
-
-## Supported stacks
-
-| Database | Status |
-| --- | --- |
-| PostgreSQL 12–18 | Available |
-| MySQL, MariaDB | Planned for v2 |
-| SQL Server, SQLite, CockroachDB | Planned for v3 |
-
-| Migration tool | Status |
-| --- | --- |
-| golang-migrate, goose, Atlas, Flyway, Prisma, Drizzle, dbmate, sqitch, plain `.sql` directories | Available |
-| Django, Alembic, Rails, Laravel, EF Core, Knex, TypeORM, Sequelize, Liquibase | Planned for v0.2 |
-| Any other tool, through capture mode | Planned for v0.2 |
-
-## Installation
-
-migrail is a single binary for macOS, Linux and Windows on amd64 and arm64.
-
-With Homebrew on macOS:
+**1. Install**
 
 ```
 brew install bbrainttech/tap/migrail
 ```
 
-With the install script on macOS or Linux. It downloads the binary for your machine, checks it against the release checksums and installs it to `~/.local/bin`:
+Or, on macOS and Linux without Homebrew:
 
 ```
 curl -fsSL https://github.com/bbrainttech/migrail/releases/latest/download/install.sh | sh
 ```
 
-Pass `--version v0.1.0` to pin a release or `--dir` to install somewhere else.
+On Windows, download the zip from the [releases page](https://github.com/bbrainttech/migrail/releases) and put `migrail.exe` on your `PATH`.
 
-On Windows, download the zip for your architecture from the [releases page](https://github.com/bbrainttech/migrail/releases) and put `migrail.exe` on your `PATH`.
-
-Each release publishes `checksums.txt`, a cosign signature for it (`checksums.txt.sigstore.json`) and an SBOM for every archive.
-
-npm, PyPI, RubyGems, Composer, NuGet, Scoop, Docker and a GitHub Action are planned for v0.2.
-
-To build from source you need Go 1.26.4 or newer and a C compiler:
-
-```
-git clone https://github.com/bbrainttech/migrail
-cd migrail
-make build
-```
-
-### Uninstalling
-
-migrail doesn't write any files besides its binary, so removing the binary uninstalls it.
-
-If you installed it with Homebrew:
-
-```
-brew uninstall migrail
-brew untap bbrainttech/tap
-```
-
-If you used the install script, delete the binary from the directory you installed to, `~/.local/bin` by default:
-
-```
-rm ~/.local/bin/migrail
-```
-
-Releases after v0.1.0 can also do this for you. Run the install script with `--uninstall`, and add `--dir` if you installed somewhere else:
-
-```
-curl -fsSL https://github.com/bbrainttech/migrail/releases/latest/download/install.sh | sh -s -- --uninstall
-```
-
-On Windows, delete `migrail.exe` from the folder you put it in, and remove that folder from your `PATH` if you added it only for migrail.
-
-## Usage
-
-From anywhere in your repository, find the migrations, detect the migration tool and check them:
+**2. Run it in your repository**
 
 ```
 migrail check --db-version 16
 ```
 
-By default, migrail only checks migrations that are new or changed compared with the base branch, including uncommitted and untracked files. The base branch comes from `--base`, then `GITHUB_BASE_REF` or `CI_MERGE_REQUEST_TARGET_BRANCH_NAME` in CI, then `origin/HEAD`, `main` or `master`. Editing a migration that is already on the base branch is reported as MR401. Use `--all` to check every migration.
+Replace `16` with the PostgreSQL version you run in production. migrail finds your migrations, detects your migration tool and checks the migrations you added or changed compared with your main branch. Add `--all` to check every migration.
 
-Check specific files or directories:
+**3. Fix what it reports**
 
-```
-migrail check db/migrations/20260917101500_add_orders_status.sql --db-version 16
-migrail check services/billing/migrations
-```
-
-migrail reads each tool's own conventions: goose `-- +goose Up` sections and `NO TRANSACTION`, dbmate `-- migrate:up` and `transaction:false`, Atlas `atlas:txmode`, the Prisma, Drizzle and sqitch plan order, Flyway versions and golang-migrate `.up.sql` files.
-
-Read SQL from standard input:
-
-```
-echo "ALTER TABLE users RENAME COLUMN email TO email_address;" | migrail check -
-```
-
-Learn what a rule detects and how to fix it, or list every rule:
+Each finding shows the lock, why it's a problem and the fix. For more detail on a rule:
 
 ```
 migrail explain MR101
-migrail rules
 ```
 
-| `check` flag | Meaning |
-| --- | --- |
-| `--db-version` | PostgreSQL major version you run in production, 12 to 18. Defaults to 12. |
-| `--fail-on` | Exit with code 1 on findings at or above `error` (default), `warning` or `notice`. `never` always exits 0. |
-| `-r`, `--rule` | Only run these rules, by ID or slug. |
-| `--skip-rule` | Skip these rules, by ID or slug. |
-| `-f`, `--format` | `pretty` (default), `json`, `sarif`, `github`, `markdown` or `junit`. |
-| `-o`, `--output` | Also write a report to a file. The format comes from the extension (`.sarif`, `.json`, `.md`, `.xml` for JUnit, `.txt` for plain text), or name it: `-o junit=report.xml`. Repeat it for several files. |
-| `-d`, `--dir` | Project root to search for migrations. Defaults to the repository root. |
-| `--all` | Check every migration, not only the ones changed since the base branch. |
-| `--base` | Git branch or commit to compare against. |
-| `--framework` | Use this migration tool instead of detecting it: `goose`, `golang-migrate`, `atlas`, `flyway`, `prisma`, `drizzle`, `dbmate`, `sqitch` or `sql`. |
-| `--compact` | One line per finding. |
-| `-q`, `--quiet` | Only findings and the summary. |
-| `-v`, `--verbose` | Print each phase with its timing. |
-| `--ci` | No color, links or spinners unless `FORCE_COLOR` or `CLICOLOR_FORCE` is set. `CI=true` turns this on. |
+## Use it in CI
 
-| Global flag | Meaning |
-| --- | --- |
-| `--color` | `auto` (default), `always` or `never`. `NO_COLOR` is respected. |
-| `--theme` | `auto` (default), `dark`, `light` or `mono`. |
-| `--ascii` | ASCII symbols instead of Unicode. |
-| `--no-hyperlinks` | Don't print clickable file links. |
-
-Findings go to standard output. Notices and progress go to standard error, so `migrail check -f json > report.json` stays clean.
-
-One run can print findings in the terminal and write reports for other tools at the same time:
-
-```
-migrail check -o migrail.sarif -o summary.md -o junit=reports/migrail.xml
-```
-
-`-f sarif` writes SARIF 2.1.0 for GitHub code scanning and editors. Run it from the repository root so file paths match the checkout, then upload the file:
+For GitHub Actions, add this workflow. It fails the pull request on errors, marks each finding on the changed line, and keeps one comment on the pull request up to date:
 
 ```yaml
-- run: migrail check -o migrail.sarif
-- uses: github/codeql-action/upload-sarif@v3
-  if: always()
-  with:
-    sarif_file: migrail.sarif
+# .github/workflows/migrail.yml
+name: migrail
+on: pull_request
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  migrail:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: bbrainttech/migrail@v0.2.0
+        with:
+          db-version: "16"
 ```
 
-Ignored findings are included as suppressed results with their reason.
+`fetch-depth: 0` lets migrail compare against the base branch. The action's inputs:
 
-In GitHub Actions, `migrail check` does this without extra flags. It prints the usual report, adds an annotation for each finding on the changed line in the pull request, and appends a markdown report to the job summary. `-f github` prints only the annotations:
+| Input | Default | Meaning |
+| --- | --- | --- |
+| `db-version` | `12` | PostgreSQL version you run in production. |
+| `fail-on` | `error` | Fail on findings at or above `error`, `warning` or `notice`. `never` only reports. |
+| `args` | | Extra arguments for `migrail check`, such as a path or `--all`. |
+| `comment` | `true` | Post the report as a pull request comment and update it on each push. |
+| `sarif` | `false` | Upload findings to GitHub code scanning. Needs `security-events: write`. |
+| `working-directory` | `.` | Directory to run in. |
+| `version` | the action's tag | migrail release to install. |
 
-```yaml
-- run: migrail check
+On other CI systems, install migrail and run `migrail check`. Write reports for your CI with `-o`, for example a JUnit report for GitLab or Jenkins:
+
+```
+migrail check -o junit=reports/migrail.xml
 ```
 
-`-f markdown` writes a summary table and one collapsible section per finding, with the statement, lock, why and fix. Use it for pull request comments, or for a job summary outside GitHub Actions:
+> The GitHub Action, `-o` and the `sarif`, `github`, `markdown` and `junit` formats ship in v0.2.0, the next release. Until then, [build from source](#build-from-source) to try them.
+
+## What it catches
+
+| Problem | Example | Rule |
+| --- | --- | --- |
+| Blocks writes while an index builds | `CREATE INDEX` without `CONCURRENTLY` | MR101 |
+| Blocks queries while an index is dropped | `DROP INDEX` without `CONCURRENTLY` | MR102 |
+| Scans a table under a lock | foreign key or `CHECK` without `NOT VALID`, `SET NOT NULL`, `ADD UNIQUE` | MR104 to MR107 |
+| Rewrites the whole table | column type change, volatile default, `VACUUM FULL` | MR201, MR202, MR205 |
+| Fails on tables with rows | `NOT NULL` column without a default | MR207 |
+| Breaks the running app | renaming or dropping a column or table | MR301 to MR304 |
+| Fails or holds locks in a transaction | `CONCURRENTLY` in a transaction, no `lock_timeout`, validating in the same transaction | MR402 to MR404 |
+| Deletes data | `TRUNCATE`, `DROP TABLE`, `UPDATE` or `DELETE` without `WHERE` | MR501 to MR503 |
+| Edited a migration that already ran | changing a file that is on the base branch | MR401 |
+
+Run `migrail rules` for the full list with severities.
+
+Statements on tables created earlier in the same set of migrations aren't reported, because those tables are still empty.
+
+## Supported tools
+
+migrail supports PostgreSQL 12 to 18 and reads each tool's own conventions, including which migrations run in a transaction:
+
+- golang-migrate
+- goose
+- Atlas
+- Flyway
+- Prisma
+- Drizzle
+- dbmate
+- sqitch
+- plain `.sql` folders
+
+Django, Rails, Laravel, Alembic, EF Core, Knex, TypeORM, Sequelize and Liquibase are planned for v0.2. MySQL and MariaDB are planned for v2.
+
+## Common tasks
+
+Check specific files or folders:
 
 ```
-migrail check -o summary.md
+migrail check db/migrations/20260917101500_add_status.sql
+migrail check services/billing/migrations
 ```
 
-`-f junit` writes a JUnit XML report for CI systems that show test results, such as GitLab, Jenkins and CircleCI. Each migration is a test case. It fails when it has findings at or above `--fail-on`, and lower findings are listed in its output.
+Check SQL from another tool:
 
-Exit codes: `0` no failing findings, `1` findings at or above `--fail-on`, `2` usage error, `4` internal error.
-
-Shell completion: `migrail completion bash|zsh|fish|powershell`.
-
-### Configuration
-
-migrail works without a config file. To set defaults for your team, add `.migrail.yaml` to the repository root:
-
-```yaml
-# yaml-language-server: $schema=https://raw.githubusercontent.com/bbrainttech/migrail/main/schemas/config.schema.json
-version: 1
-
-db:
-  version: "16"
-
-projects:                     # omit to detect projects automatically
-  - path: services/api
-    framework: goose
-    migrations: db/migrations
-
-git:
-  base: origin/main
-  check: changed              # changed or all
-
-rules:
-  MR403: off                  # severity shorthand
-  create-index-non-concurrent:
-    severity: warning
-
-policy:
-  fail_on: error              # error, warning, notice or never
-  require_ignore_reason: true
-
-ignore:
-  - path: "db/migrations/2019*"
-    reason: applied long ago
-  - rule: MR502
-    path: "legacy/**"
-    reason: legacy tables are dropped on purpose
-
-output:
-  format: pretty
-  theme: auto
+```
+alembic upgrade head --sql | migrail check -
 ```
 
-Command-line flags override the config file. An invalid config stops the run with exit code 2 and points at the line. `migrail schema config` prints the JSON schema for editor autocompletion.
-
-### Ignoring findings
-
-When a finding is safe in your situation, ignore it with a comment and say why:
+Ignore a finding that is safe in your case. The reason is required:
 
 ```sql
 -- migrail:ignore MR101 reason="orders is empty until launch"
 CREATE INDEX idx_orders_status ON orders (status);
 ```
 
-`migrail:ignore` applies to the next statement. `migrail:ignore-file` applies to the whole file. List several rules with commas, by ID or slug. A reason is required: without one the finding is still reported, together with MR904. Ignores that don't match any finding are reported as MR905. Ignored findings are hidden from the terminal output, counted in the summary, and kept in JSON output with their reason.
+`migrail:ignore` applies to the next statement, and `migrail:ignore-file` to the whole file. Without a reason, the finding is still reported.
 
-### Available rules
+Get machine-readable output:
 
-| ID | Rule | Severity |
+```
+migrail check -f json > report.json
+```
+
+## Options
+
+| `check` flag | Meaning |
+| --- | --- |
+| `--db-version` | PostgreSQL version you run in production, 12 to 18. Defaults to 12. |
+| `--all` | Check every migration, not only the ones changed since the base branch. |
+| `--base` | Branch or commit to compare against. Defaults to `origin/HEAD`, then `main` or `master`. |
+| `--fail-on` | Exit with code 1 on findings at or above `error` (default), `warning` or `notice`. `never` always exits 0. |
+| `-f`, `--format` | Output format: `pretty` (default), `json`, `sarif`, `github`, `markdown` or `junit`. |
+| `-o`, `--output` | Also write a report to a file. The format comes from the extension (`.sarif`, `.json`, `.md`, `.xml` for JUnit, `.txt`) or a prefix, such as `junit=report.xml`. Repeatable. |
+| `-r`, `--rule` | Only run these rules, by ID or name. |
+| `--skip-rule` | Skip these rules, by ID or name. |
+| `-d`, `--dir` | Project root to search. Defaults to the repository root. |
+| `--framework` | Use this migration tool instead of detecting it. |
+| `--compact` | One line per finding. |
+| `-q`, `--quiet` | Only findings and the summary. |
+
+Global flags: `--color auto|always|never` (`NO_COLOR` works too), `--theme auto|dark|light|mono`, `--ascii`, `--no-hyperlinks`. Run `migrail check --help` for everything.
+
+Exit codes: `0` passed, `1` findings at or above `--fail-on`, `2` usage or config error, `4` internal error.
+
+In GitHub Actions, `migrail check` also adds annotations and a job summary on its own.
+
+## Configuration
+
+You don't need a config file. To share settings with your team, add `.migrail.yaml` at the repository root:
+
+```yaml
+version: 1
+
+db:
+  version: "16"
+
+rules:
+  MR403: off
+  create-index-non-concurrent: warning
+
+policy:
+  fail_on: error
+
+ignore:
+  - path: "db/migrations/2019*"
+    reason: applied long ago
+```
+
+Flags override the config file. `migrail schema config` prints the JSON schema for editor autocompletion. The full set of keys:
+
+```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bbrainttech/migrail/main/schemas/config.schema.json
+version: 1
+db:
+  version: "16"
+projects:                     # omit to detect projects automatically
+  - path: services/api
+    framework: goose
+    migrations: db/migrations
+git:
+  base: origin/main
+  check: changed              # changed or all
+rules:
+  MR403: off                  # off, notice, warning or error
+policy:
+  fail_on: error              # error, warning, notice or never
+  require_ignore_reason: true
+ignore:
+  - rule: MR502
+    path: "legacy/**"
+    reason: legacy tables are dropped on purpose
+output:
+  format: pretty              # pretty, json, sarif, github, markdown or junit
+  theme: auto
+```
+
+## Install and uninstall
+
+| Method | Install | Uninstall |
 | --- | --- | --- |
-| MR101 | `create-index-non-concurrent`: `CREATE INDEX` without `CONCURRENTLY` blocks writes | error |
-| MR102 | `drop-index-non-concurrent`: `DROP INDEX` without `CONCURRENTLY` blocks all queries | warning |
-| MR104 | `add-foreign-key-validating`: a foreign key without `NOT VALID` blocks writes on both tables | error |
-| MR105 | `add-check-validating`: a `CHECK` constraint without `NOT VALID` blocks all queries | error |
-| MR106 | `add-unique-constraint-blocking`: `UNIQUE` or `PRIMARY KEY` builds an index under an exclusive lock | error |
-| MR107 | `set-not-null-scan`: `SET NOT NULL` scans the table while blocking all queries | error |
-| MR201 | `alter-column-type-rewrite`: changing a column type rewrites the table | error |
-| MR202 | `add-column-volatile-default`: a volatile default such as `gen_random_uuid()` rewrites the table | error |
-| MR205 | `vacuum-full-or-cluster`: `VACUUM FULL` and `CLUSTER` rewrite tables while blocking all queries | error |
-| MR207 | `add-column-not-null-no-default`: a `NOT NULL` column without a default fails on tables with rows | error |
-| MR301 | `drop-column-in-use`: dropping a column breaks code that still uses it | warning |
-| MR302 | `rename-column`: renaming a column breaks code that still uses the old name | error |
-| MR303 | `rename-table`: renaming a table breaks code that still uses the old name | error |
-| MR304 | `drop-table-in-use`: dropping a table breaks code that still uses it (off until code scanning) | warning |
-| MR401 | `edited-applied-migration`: a migration already on the base branch was edited | warning |
-| MR402 | `concurrent-in-transaction`: `CONCURRENTLY` fails inside a transaction | error |
-| MR403 | `missing-lock-timeout`: locking DDL without `lock_timeout` can queue every query behind it | warning |
-| MR404 | `not-valid-validate-same-tx`: validating in the same transaction as `NOT VALID` keeps the lock | error |
-| MR501 | `truncate-table`: `TRUNCATE` deletes every row | error |
-| MR502 | `drop-table`: `DROP TABLE` deletes the table and its data | warning |
-| MR503 | `delete-or-update-without-where`: `UPDATE` or `DELETE` without `WHERE` changes every row | error |
-| MR901 | `parse-error`: the SQL can't be parsed | error |
-| MR903 | `dynamic-sql`: SQL inside a `DO` block can't be checked | notice |
-| MR904 | `ignore-without-reason`: an ignore comment has no reason | warning |
-| MR905 | `unused-ignore`: an ignore comment doesn't match any finding | notice |
+| Homebrew | `brew install bbrainttech/tap/migrail` | `brew uninstall migrail` |
+| Install script | `curl -fsSL https://github.com/bbrainttech/migrail/releases/latest/download/install.sh \| sh` | `rm ~/.local/bin/migrail` |
+| Windows | download the zip from the [releases page](https://github.com/bbrainttech/migrail/releases) | delete `migrail.exe` |
 
-Run `migrail explain <ID>` for what each rule detects, why it matters and how to fix it.
+The install script puts migrail in `~/.local/bin`. Pass `--version v0.1.0` to pin a release or `--dir` to choose the folder. Releases after v0.1.0 also accept `--uninstall`. migrail writes no other files, so removing the binary uninstalls it.
 
-Statements on tables created earlier in the same set of files don't trigger lock rules, because those tables are still empty.
+Each release has `checksums.txt`, a cosign signature for it and an SBOM for every archive. The install script checks the checksum.
+
+### Build from source
+
+You need Go 1.26.4 or newer and a C compiler:
+
+```
+git clone https://github.com/bbrainttech/migrail
+cd migrail
+make build
+./bin/migrail version
+```
 
 ## Roadmap
 
-- [x] Foundations: project setup, CI, cross-platform builds
-- [x] Analysis engine: Postgres parser, first rules, JSON output
-- [x] Terminal output: colors, code frames, `explain` and `rules`
 - [x] v0.1: PostgreSQL rules and SQL migration tools
-- [ ] v0.2: framework support, capture mode, CI integrations, package managers
-- [ ] v0.3: application code checks, live database estimates, interactive explorer
+- [ ] v0.2: framework support (Django, Rails, Laravel and more), CI integrations, package managers
+- [ ] v0.3: checks against your application code, estimates from a read-only staging database, interactive explorer
 - [ ] v1.0: full rule catalog, stable schemas, documentation site
 
 ## Contributing
 
-Requirements: Go 1.26.4 or newer, a C compiler (the Postgres parser uses cgo), [golangci-lint](https://golangci-lint.run) v2, and Docker for integration tests.
+You need Go 1.26.4 or newer, a C compiler, [golangci-lint](https://golangci-lint.run) v2, and Docker for the lock tests.
 
 ```
 make build           build bin/migrail
 make test            run unit tests with the race detector
 make lint            run golangci-lint
 make fmt             format the code
-make golden-update   regenerate terminal and JSON snapshots, then review the diff
-make lockverify      verify the lock model against PostgreSQL 12 to 18 (needs Docker)
-make snapshot        build a release binary for this machine with goreleaser
+make golden-update   regenerate output snapshots, then review the diff
+make lockverify      check the lock model against PostgreSQL 12 to 18 (needs Docker)
+make snapshot        build a release binary for this machine
 ```
 
 ## License
