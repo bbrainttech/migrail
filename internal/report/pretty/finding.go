@@ -136,7 +136,7 @@ func (r renderer) lockLines(lock *ir.LockImpact, width int) []string {
 		tables = append(tables, t.Accent.Render(table))
 	}
 
-	text := t.Fg.Render(lock.Mode+" on ") + strings.Join(tables, t.Fg.Render(", ")) + r.dot() + t.Fg.Render(blockedText(lock.Blocks))
+	text := t.Fg.Render(lock.Mode+" on ") + strings.Join(tables, t.Fg.Render(", ")) + r.dot() + t.Fg.Render(lock.BlockedText())
 
 	if lock.Rewrite {
 		text += r.dot() + t.Fg.Render("rewrites the table")
@@ -147,17 +147,6 @@ func (r renderer) lockLines(lock *ir.LockImpact, width int) []string {
 	}
 
 	return plainLines(t.Fg, components.Wrap(ansi.Strip(text), width))
-}
-
-func blockedText(blocks []string) string {
-	switch {
-	case len(blocks) == 0:
-		return "doesn't block reads or writes"
-	case len(blocks) == 4:
-		return "blocks reads and writes"
-	default:
-		return "blocks " + strings.Join(blocks, ", ")
-	}
 }
 
 func (r renderer) fixSteps(fix *ir.Fix, gutter int) []string {

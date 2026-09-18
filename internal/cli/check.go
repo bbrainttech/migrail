@@ -17,6 +17,7 @@ import (
 	"github.com/bbrainttech/migrail/internal/ir"
 	"github.com/bbrainttech/migrail/internal/report/github"
 	"github.com/bbrainttech/migrail/internal/report/jsonreport"
+	"github.com/bbrainttech/migrail/internal/report/markdown"
 	"github.com/bbrainttech/migrail/internal/report/pretty"
 	"github.com/bbrainttech/migrail/internal/report/sarif"
 	"github.com/bbrainttech/migrail/internal/rules"
@@ -27,17 +28,18 @@ import (
 )
 
 const (
-	exitFindings  = 1
-	stdinArgument = "-"
-	stdinPath     = "<stdin>"
-	formatJSON    = "json"
-	formatPretty  = "pretty"
-	formatSARIF   = "sarif"
-	formatGitHub  = "github"
-	failOnNever   = "never"
+	exitFindings   = 1
+	stdinArgument  = "-"
+	stdinPath      = "<stdin>"
+	formatJSON     = "json"
+	formatPretty   = "pretty"
+	formatSARIF    = "sarif"
+	formatGitHub   = "github"
+	formatMarkdown = "markdown"
+	failOnNever    = "never"
 )
 
-var formats = []string{formatPretty, formatJSON, formatSARIF, formatGitHub}
+var formats = []string{formatPretty, formatJSON, formatSARIF, formatGitHub, formatMarkdown}
 
 var failOnLevels = []string{string(ir.SeverityError), string(ir.SeverityWarning), string(ir.SeverityNotice), failOnNever}
 
@@ -75,7 +77,7 @@ func newCheckCommand(ui *uiFlags) *cobra.Command {
 	}
 
 	flags := cmd.Flags()
-	flags.StringVarP(&opts.format, "format", "f", formatPretty, "output format: pretty, json, sarif or github")
+	flags.StringVarP(&opts.format, "format", "f", formatPretty, "output format: pretty, json, sarif, github or markdown")
 	flags.StringVar(&opts.dbVersion, "db-version", "", "PostgreSQL major version in production, such as 16 (default: 12)")
 	flags.StringVar(&opts.failOn, "fail-on", string(ir.SeverityError), "exit with code 1 on findings at or above: error, warning, notice or never")
 	flags.StringSliceVarP(&opts.rules, "rule", "r", nil, "only run these rules, by ID or slug")
@@ -208,6 +210,17 @@ func writeCheckReport(
 	result analyze.Result,
 	elapsed time.Duration,
 ) error {
+	if opts.format == formatMarkdown {
+		return markdown.Write(cmd.OutOrStdout(), markdown.Input{
+			ToolVersion: currentBuildInfo().Version,
+			Dialect:     dialect.Name(),
+			DBVersion:   dbVersion,
+			Migrations:  migrations,
+			Result:      result,
+			FailOn:      opts.failOn,
+		})
+	}
+
 	if opts.format == formatGitHub {
 		return github.Write(cmd.OutOrStdout(), github.Input{Result: result})
 	}

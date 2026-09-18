@@ -14,12 +14,13 @@ import (
 )
 
 const (
-	fixtures        = "../../testdata/sql"
-	goldenDir       = "../../testdata/golden/json"
-	sarifGoldenDir  = "../../testdata/golden/sarif"
-	githubGoldenDir = "../../testdata/golden/github"
-	mr101Basic      = fixtures + "/MR101/bad/basic.sql"
-	projects        = "../../testdata/projects"
+	fixtures          = "../../testdata/sql"
+	goldenDir         = "../../testdata/golden/json"
+	sarifGoldenDir    = "../../testdata/golden/sarif"
+	githubGoldenDir   = "../../testdata/golden/github"
+	markdownGoldenDir = "../../testdata/golden/markdown"
+	mr101Basic        = fixtures + "/MR101/bad/basic.sql"
+	projects          = "../../testdata/projects"
 )
 
 type checkRun struct {
@@ -176,4 +177,32 @@ func TestCheckGitHubGolden(t *testing.T) {
 	run := runCLI(t, "", args...)
 
 	golden.Assert(t, filepath.Join(githubGoldenDir, "mixed.txt"), run.stdout)
+}
+
+func TestCheckMarkdownGolden(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		files []string
+	}{
+		{name: "findings", files: []string{
+			mr101Basic,
+			fixtures + "/MR201/bad/two_columns.sql",
+			fixtures + "/MR302/bad/in_transaction.sql",
+			fixtures + "/MR904/good/with_reason.sql",
+		}},
+		{name: "clean", files: []string{fixtures + "/MR101/good/concurrently.sql"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			args := append([]string{"check", "-f", formatMarkdown, "--db-version", "16"}, tt.files...)
+			run := runCLI(t, "", args...)
+
+			golden.Assert(t, filepath.Join(markdownGoldenDir, tt.name+".md"), run.stdout)
+		})
+	}
 }

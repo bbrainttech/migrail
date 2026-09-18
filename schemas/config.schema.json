@@ -93,7 +93,7 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "format": { "enum": ["pretty", "json", "sarif", "github"] },
+        "format": { "enum": ["pretty", "json", "sarif", "github", "markdown"] },
         "theme": { "enum": ["auto", "dark", "light", "mono"] },
         "color": { "enum": ["auto", "always", "never"] },
         "compact": { "type": "boolean" },

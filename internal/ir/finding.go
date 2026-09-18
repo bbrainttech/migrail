@@ -1,5 +1,7 @@
 package ir
 
+import "strings"
+
 type Severity string
 
 const (
@@ -93,6 +95,17 @@ type LockImpact struct {
 	Blocks  []string
 	Rewrite bool
 	Scan    bool
+}
+
+func (l LockImpact) BlockedText() string {
+	switch {
+	case len(l.Blocks) == 0:
+		return "doesn't block reads or writes"
+	case len(l.Blocks) == 4:
+		return "blocks reads and writes"
+	default:
+		return "blocks " + strings.Join(l.Blocks, ", ")
+	}
 }
 
 type Evidence struct {

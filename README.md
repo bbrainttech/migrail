@@ -166,7 +166,7 @@ migrail rules
 | `--fail-on` | Exit with code 1 on findings at or above `error` (default), `warning` or `notice`. `never` always exits 0. |
 | `-r`, `--rule` | Only run these rules, by ID or slug. |
 | `--skip-rule` | Skip these rules, by ID or slug. |
-| `-f`, `--format` | `pretty` (default), `json`, `sarif` or `github`. |
+| `-f`, `--format` | `pretty` (default), `json`, `sarif`, `github` or `markdown`. |
 | `-d`, `--dir` | Project root to search for migrations. Defaults to the repository root. |
 | `--all` | Check every migration, not only the ones changed since the base branch. |
 | `--base` | Git branch or commit to compare against. |
@@ -200,6 +200,12 @@ Ignored findings are included as suppressed results with their reason.
 
 ```yaml
 - run: migrail check -f github
+```
+
+`-f markdown` writes a summary table and one collapsible section per finding, with the statement, lock, why and fix. Use it for pull request comments or the Actions job summary:
+
+```yaml
+- run: migrail check -f markdown >> "$GITHUB_STEP_SUMMARY"
 ```
 
 Exit codes: `0` no failing findings, `1` findings at or above `--fail-on`, `2` usage error, `4` internal error.

@@ -34,8 +34,8 @@
   [38;2;230;230;234m                            error, warning, notice[m
   [38;2;230;230;234m                            or never (default "error")[m
     [1;38;2;230;230;234m-f, --format string[m       [38;2;230;230;234moutput format: pretty,[m
-  [38;2;230;230;234m                            json, sarif or github[m
-  [38;2;230;230;234m                            (default "pretty")[m
+  [38;2;230;230;234m                            json, sarif, github or[m
+  [38;2;230;230;234m                            markdown (default "pretty")[m
         [1;38;2;230;230;234m--framework string[m    [38;2;230;230;234mmigration tool to use[m
   [38;2;230;230;234m                            instead of detecting[m
   [38;2;230;230;234m                            it: sqitch, atlas,[m
