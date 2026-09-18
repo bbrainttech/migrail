@@ -17,6 +17,7 @@ import (
 	"github.com/bbrainttech/migrail/internal/ir"
 	"github.com/bbrainttech/migrail/internal/report/jsonreport"
 	"github.com/bbrainttech/migrail/internal/report/pretty"
+	"github.com/bbrainttech/migrail/internal/report/sarif"
 	"github.com/bbrainttech/migrail/internal/rules"
 	"github.com/bbrainttech/migrail/internal/suppress"
 	"github.com/bbrainttech/migrail/internal/ui/components"
@@ -30,10 +31,11 @@ const (
 	stdinPath     = "<stdin>"
 	formatJSON    = "json"
 	formatPretty  = "pretty"
+	formatSARIF   = "sarif"
 	failOnNever   = "never"
 )
 
-var formats = []string{formatPretty, formatJSON}
+var formats = []string{formatPretty, formatJSON, formatSARIF}
 
 var failOnLevels = []string{string(ir.SeverityError), string(ir.SeverityWarning), string(ir.SeverityNotice), failOnNever}
 
@@ -71,7 +73,7 @@ func newCheckCommand(ui *uiFlags) *cobra.Command {
 	}
 
 	flags := cmd.Flags()
-	flags.StringVarP(&opts.format, "format", "f", formatPretty, "output format: pretty or json")
+	flags.StringVarP(&opts.format, "format", "f", formatPretty, "output format: pretty, json or sarif")
 	flags.StringVar(&opts.dbVersion, "db-version", "", "PostgreSQL major version in production, such as 16 (default: 12)")
 	flags.StringVar(&opts.failOn, "fail-on", string(ir.SeverityError), "exit with code 1 on findings at or above: error, warning, notice or never")
 	flags.StringSliceVarP(&opts.rules, "rule", "r", nil, "only run these rules, by ID or slug")
@@ -204,6 +206,14 @@ func writeCheckReport(
 	result analyze.Result,
 	elapsed time.Duration,
 ) error {
+	if opts.format == formatSARIF {
+		return sarif.Write(cmd.OutOrStdout(), sarif.Input{
+			ToolVersion: currentBuildInfo().Version,
+			Rules:       ruleMetas(),
+			Result:      result,
+		})
+	}
+
 	if opts.format == formatJSON {
 		return jsonreport.Write(cmd.OutOrStdout(), jsonreport.Input{
 			ToolVersion: currentBuildInfo().Version,
@@ -239,6 +249,17 @@ func writeCheckReport(
 		Base:        scope.Base,
 		ChangedOnly: scope.ChangedOnly,
 	}, options)
+}
+
+func ruleMetas() []ir.RuleMeta {
+	all := rules.All()
+	metas := make([]ir.RuleMeta, 0, len(all))
+
+	for _, rule := range all {
+		metas = append(metas, rule.Meta())
+	}
+
+	return metas
 }
 
 func applySuppressions(
@@ -293,7 +314,7 @@ func validateCheckOptions(dialect *pg.Dialect, opts checkOptions) (ir.Version, e
 	}
 
 	if !slices.Contains(formats, opts.format) {
-		return ir.Version{}, fmt.Errorf("unsupported format %q: use %s", opts.format, strings.Join(formats, " or "))
+		return ir.Version{}, fmt.Errorf("unsupported format %q: use %s", opts.format, strings.Join(formats, ", "))
 	}
 
 	if !slices.Contains(failOnLevels, opts.failOn) {

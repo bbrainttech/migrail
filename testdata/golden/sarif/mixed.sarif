@@ -1,0 +1,780 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "migrail",
+          "version": "dev",
+          "informationUri": "https://github.com/bbrainttech/migrail",
+          "rules": [
+            {
+              "id": "MR101",
+              "name": "create-index-non-concurrent",
+              "shortDescription": {
+                "text": "CREATE INDEX without CONCURRENTLY blocks writes"
+              },
+              "help": {
+                "text": "CREATE INDEX without CONCURRENTLY blocks writes",
+                "markdown": "# MR101 · create-index-non-concurrent\n\n## What it detects\n\n`CREATE INDEX` or `CREATE UNIQUE INDEX` without `CONCURRENTLY` on a table that this change set didn't create.\n\n## Why it's dangerous\n\nBuilding an index reads the whole table. Without `CONCURRENTLY`, Postgres holds a `SHARE` lock on the table for the entire build. Reads still work, but every `INSERT`, `UPDATE` and `DELETE` waits. On a table with millions of rows the build can take minutes, and the application's write requests queue up behind it.\n\n## Lock & impact\n\n| Statement | Lock | Blocks | Work |\n|---|---|---|---|\n| `CREATE INDEX` | `SHARE` | `INSERT`, `UPDATE`, `DELETE` | full table scan and index build |\n| `CREATE INDEX CONCURRENTLY` | `SHARE UPDATE EXCLUSIVE` | other schema changes and `VACUUM` | two table scans, waits for older transactions |\n\nThese locks apply to PostgreSQL 12 through 18.\n\n## How to fix\n\nAdd `CONCURRENTLY` and run the statement outside a transaction. Postgres rejects `CREATE INDEX CONCURRENTLY` inside a transaction block, so turn off the migration tool's transaction for this migration.\n\n```sql\nCREATE INDEX CONCURRENTLY idx_orders_status ON orders (status);\n```\n\nIf a concurrent build fails, it leaves an `INVALID` index behind. Drop it with `DROP INDEX CONCURRENTLY` and run the migration again.\n\n## When it's safe to ignore\n\n- The table is empty or very small in every environment.\n- The migration runs during a maintenance window with writes stopped.\n- The table is partitioned. Postgres can't build an index on a partitioned table concurrently. Create the index concurrently on each partition, then create it on the parent with `ON ONLY` and attach the partition indexes.\n\n## Examples\n\nBad:\n\n```sql\nCREATE INDEX idx_orders_status ON orders (status);\n```\n\nGood:\n\n```sql\nCREATE INDEX CONCURRENTLY idx_orders_status ON orders (status);\n```\n\n## References\n\n- [PostgreSQL: Building indexes concurrently](https://www.postgresql.org/docs/current/sql-createindex.html#SQL-CREATEINDEX-CONCURRENTLY)\n- [PostgreSQL: Table-level lock modes](https://www.postgresql.org/docs/current/explicit-locking.html#LOCKING-TABLES)\n"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "locking"
+                ]
+              }
+            },
+            {
+              "id": "MR102",
+              "name": "drop-index-non-concurrent",
+              "shortDescription": {
+                "text": "DROP INDEX without CONCURRENTLY blocks reads and writes"
+              },
+              "help": {
+                "text": "DROP INDEX without CONCURRENTLY blocks reads and writes",
+                "markdown": "# MR102 · drop-index-non-concurrent\n\n## What it detects\n\n`DROP INDEX` without `CONCURRENTLY`, unless the index was created earlier in the same change set.\n\n## Why it's dangerous\n\n`DROP INDEX` takes an `ACCESS EXCLUSIVE` lock on the table the index belongs to. The drop itself is fast, but it has to wait for every query that is using the table. While it waits, every new query on the table queues behind it, so one long-running query can stall the whole table.\n\n## Lock & impact\n\n| Statement | Lock | Blocks | Work |\n|---|---|---|---|\n| `DROP INDEX` | `ACCESS EXCLUSIVE` on the table | all queries | removes the index files |\n| `DROP INDEX CONCURRENTLY` | `SHARE UPDATE EXCLUSIVE` on the table | other schema changes | waits for queries using the index to finish |\n\nThese locks apply to PostgreSQL 12 through 18.\n\n## How to fix\n\nDrop the index concurrently. `DROP INDEX CONCURRENTLY` can't run inside a transaction, drops one index per statement and doesn't support `CASCADE`.\n\n```sql\nDROP INDEX CONCURRENTLY idx_orders_status;\n```\n\n## When it's safe to ignore\n\n- The table is small and has little traffic.\n- The migration runs during a maintenance window.\n\n## Examples\n\nBad:\n\n```sql\nDROP INDEX idx_orders_status;\n```\n\nGood:\n\n```sql\nDROP INDEX CONCURRENTLY idx_orders_status;\n```\n\n## References\n\n- [PostgreSQL: DROP INDEX](https://www.postgresql.org/docs/current/sql-dropindex.html)\n- [PostgreSQL: Table-level lock modes](https://www.postgresql.org/docs/current/explicit-locking.html#LOCKING-TABLES)\n"
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "tags": [
+                  "locking"
+                ]
+              }
+            },
+            {
+              "id": "MR104",
+              "name": "add-foreign-key-validating",
+              "shortDescription": {
+                "text": "Adding a foreign key without NOT VALID blocks writes on both tables"
+              },
+              "help": {
+                "text": "Adding a foreign key without NOT VALID blocks writes on both tables",
+                "markdown": "# MR104 · add-foreign-key-validating\n\n## What it detects\n\nA foreign key added to an existing table without `NOT VALID`, either as `ADD CONSTRAINT … FOREIGN KEY` or as `ADD COLUMN … REFERENCES`.\n\n## Why it's dangerous\n\nWhen you add a foreign key, Postgres checks that every existing row points at a row in the referenced table. It holds a `SHARE ROW EXCLUSIVE` lock on both tables for the whole check. Inserts, updates and deletes on both tables wait until the check finishes, and on large tables that can take minutes.\n\n## Lock & impact\n\n| Statement | Lock | Blocks | Work |\n|---|---|---|---|\n| `ADD CONSTRAINT … FOREIGN KEY` | `SHARE ROW EXCLUSIVE` on both tables | `INSERT`, `UPDATE`, `DELETE` on both tables | scans the table to check every row |\n| `ADD CONSTRAINT … FOREIGN KEY … NOT VALID` | `SHARE ROW EXCLUSIVE` on both tables, briefly | the same, only for a moment | none |\n| `VALIDATE CONSTRAINT` | `SHARE UPDATE EXCLUSIVE` on the table, `ROW SHARE` on the referenced table | other schema changes | scans the table |\n\nThese locks apply to PostgreSQL 12 through 18.\n\n## How to fix\n\nAdd the constraint as `NOT VALID`. Postgres enforces it for new rows right away but skips the check of existing rows. Then validate it in a separate migration, so the validation doesn't run in the same transaction as the lock from the first step.\n\n```sql\nALTER TABLE orders ADD CONSTRAINT orders_user_id_fkey\n  FOREIGN KEY (user_id) REFERENCES users (id) NOT VALID;\n```\n\n```sql\nALTER TABLE orders VALIDATE CONSTRAINT orders_user_id_fkey;\n```\n\nFor `ADD COLUMN … REFERENCES`, add the column without the reference first, then add the constraint as `NOT VALID` and validate it.\n\n## When it's safe to ignore\n\n- Both tables are empty or very small in every environment.\n- The migration runs during a maintenance window with writes stopped.\n\n## Examples\n\nBad:\n\n```sql\nALTER TABLE orders ADD CONSTRAINT orders_user_id_fkey FOREIGN KEY (user_id) REFERENCES users (id);\n```\n\nGood:\n\n```sql\nALTER TABLE orders ADD CONSTRAINT orders_user_id_fkey FOREIGN KEY (user_id) REFERENCES users (id) NOT VALID;\n```\n\n## References\n\n- [PostgreSQL: ALTER TABLE, ADD table_constraint](https://www.postgresql.org/docs/current/sql-altertable.html#SQL-ALTERTABLE-DESC-ADD-TABLE-CONSTRAINT)\n- [PostgreSQL: Table-level lock modes](https://www.postgresql.org/docs/current/explicit-locking.html#LOCKING-TABLES)\n"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "locking"
+                ]
+              }
+            },
+            {
+              "id": "MR105",
+              "name": "add-check-validating",
+              "shortDescription": {
+                "text": "Adding a CHECK constraint without NOT VALID blocks reads and writes"
+              },
+              "help": {
+                "text": "Adding a CHECK constraint without NOT VALID blocks reads and writes",
+                "markdown": "# MR105 · add-check-validating\n\n## What it detects\n\n`ADD CONSTRAINT … CHECK` without `NOT VALID` on a table that this change set didn't create.\n\n## Why it's dangerous\n\nPostgres checks every existing row against the new constraint while it holds an `ACCESS EXCLUSIVE` lock. Every query on the table, including `SELECT`, waits until the check finishes.\n\n## Lock & impact\n\n| Statement | Lock | Blocks | Work |\n|---|---|---|---|\n| `ADD CONSTRAINT … CHECK` | `ACCESS EXCLUSIVE` | all queries | scans the table |\n| `ADD CONSTRAINT … CHECK … NOT VALID` | `ACCESS EXCLUSIVE`, briefly | all queries, only for a moment | none |\n| `VALIDATE CONSTRAINT` | `SHARE UPDATE EXCLUSIVE` | other schema changes | scans the table |\n\nThese locks apply to PostgreSQL 12 through 18.\n\n## How to fix\n\nAdd the constraint as `NOT VALID`, which enforces it for new and updated rows right away. Then validate it in a separate migration.\n\n```sql\nALTER TABLE orders ADD CONSTRAINT orders_total_positive CHECK (total > 0) NOT VALID;\n```\n\n```sql\nALTER TABLE orders VALIDATE CONSTRAINT orders_total_positive;\n```\n\n## When it's safe to ignore\n\n- The table is empty or very small in every environment.\n- The migration runs during a maintenance window.\n\n## Examples\n\nBad:\n\n```sql\nALTER TABLE orders ADD CONSTRAINT orders_total_positive CHECK (total > 0);\n```\n\nGood:\n\n```sql\nALTER TABLE orders ADD CONSTRAINT orders_total_positive CHECK (total > 0) NOT VALID;\n```\n\n## References\n\n- [PostgreSQL: ALTER TABLE, ADD table_constraint](https://www.postgresql.org/docs/current/sql-altertable.html#SQL-ALTERTABLE-DESC-ADD-TABLE-CONSTRAINT)\n- [PostgreSQL: Table-level lock modes](https://www.postgresql.org/docs/current/explicit-locking.html#LOCKING-TABLES)\n"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "locking"
+                ]
+              }
+            },
+            {
+              "id": "MR106",
+              "name": "add-unique-constraint-blocking",
+              "shortDescription": {
+                "text": "Adding UNIQUE or PRIMARY KEY builds an index while blocking reads and writes"
+              },
+              "help": {
+                "text": "Adding UNIQUE or PRIMARY KEY builds an index while blocking reads and writes",
+                "markdown": "# MR106 · add-unique-constraint-blocking\n\n## What it detects\n\n`ADD CONSTRAINT … UNIQUE` or `ADD PRIMARY KEY` that builds its own index, on a table that this change set didn't create. Constraints added with `USING INDEX` are fine. Unique constraints declared inline on `ADD COLUMN` aren't detected yet.\n\n## Why it's dangerous\n\nPostgres builds a unique index for the constraint while it holds an `ACCESS EXCLUSIVE` lock. Every query on the table waits for the whole index build.\n\n## Lock & impact\n\n| Statement | Lock | Blocks | Work |\n|---|---|---|---|\n| `ADD UNIQUE` / `ADD PRIMARY KEY` | `ACCESS EXCLUSIVE` | all queries | builds an index |\n| `CREATE UNIQUE INDEX CONCURRENTLY` | `SHARE UPDATE EXCLUSIVE` | other schema changes | builds an index |\n| `ADD CONSTRAINT … USING INDEX` | `ACCESS EXCLUSIVE`, briefly | all queries, only for a moment | none |\n\nFor `PRIMARY KEY`, Postgres also sets `NOT NULL` on the key columns, which scans the table if they allow NULL. Set `NOT NULL` first using the pattern in `migrail explain MR107`.\n\n## How to fix\n\nBuild the unique index concurrently, outside a transaction, then attach it to the constraint.\n\n```sql\nCREATE UNIQUE INDEX CONCURRENTLY orders_code_key ON orders (code);\n```\n\n```sql\nALTER TABLE orders ADD CONSTRAINT orders_code_key UNIQUE USING INDEX orders_code_key;\n```\n\n## When it's safe to ignore\n\n- The table is empty or very small in every environment.\n- The migration runs during a maintenance window.\n\n## Examples\n\nBad:\n\n```sql\nALTER TABLE orders ADD CONSTRAINT orders_code_key UNIQUE (code);\n```\n\nGood:\n\n```sql\nALTER TABLE orders ADD CONSTRAINT orders_code_key UNIQUE USING INDEX orders_code_key;\n```\n\n## References\n\n- [PostgreSQL: ALTER TABLE, ADD table_constraint_using_index](https://www.postgresql.org/docs/current/sql-altertable.html#SQL-ALTERTABLE-DESC-ADD-TABLE-CONSTRAINT-USING-INDEX)\n- [PostgreSQL: Table-level lock modes](https://www.postgresql.org/docs/current/explicit-locking.html#LOCKING-TABLES)\n"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "locking"
+                ]
+              }
+            },
+            {
+              "id": "MR107",
+              "name": "set-not-null-scan",
+              "shortDescription": {
+                "text": "SET NOT NULL scans the table while blocking reads and writes"
+              },
+              "help": {
+                "text": "SET NOT NULL scans the table while blocking reads and writes",
+                "markdown": "# MR107 · set-not-null-scan\n\n## What it detects\n\n`ALTER COLUMN … SET NOT NULL` on a table that this change set didn't create, unless an earlier statement in the change set added and validated a `CHECK (column IS NOT NULL)` constraint.\n\n## Why it's dangerous\n\nTo set `NOT NULL`, Postgres reads every row to confirm the column has no NULL values. It holds an `ACCESS EXCLUSIVE` lock for the whole scan, so every query on the table waits, including `SELECT`.\n\n## Lock & impact\n\n| Statement | Lock | Blocks | Work |\n|---|---|---|---|\n| `SET NOT NULL` | `ACCESS EXCLUSIVE` | all queries | full table scan |\n| `SET NOT NULL` with a validated `CHECK (column IS NOT NULL)` | `ACCESS EXCLUSIVE`, briefly | all queries, only for a moment | none |\n\nPostgres skips the scan when a validated check constraint already proves the column has no NULL values. This applies to PostgreSQL 12 through 18.\n\n## How to fix\n\n1. Add a check constraint as `NOT VALID`. This takes a brief lock and doesn't scan.\n2. Validate the constraint in a separate migration. Validation scans the table but only takes a `SHARE UPDATE EXCLUSIVE` lock, so reads and writes continue.\n3. Set `NOT NULL`, which now skips the scan, and drop the check constraint.\n\n```sql\nALTER TABLE orders ADD CONSTRAINT orders_status_not_null CHECK (status IS NOT NULL) NOT VALID;\n```\n\n```sql\nALTER TABLE orders VALIDATE CONSTRAINT orders_status_not_null;\n```\n\n```sql\nALTER TABLE orders ALTER COLUMN status SET NOT NULL;\nALTER TABLE orders DROP CONSTRAINT orders_status_not_null;\n```\n\n## When it's safe to ignore\n\n- The table is empty or very small in every environment.\n- The migration runs during a maintenance window with traffic stopped.\n- A validated `CHECK (column IS NOT NULL)` constraint already exists from an earlier, already-applied migration. migrail only sees constraints added in the current change set.\n\n## Examples\n\nBad:\n\n```sql\nALTER TABLE orders ALTER COLUMN status SET NOT NULL;\n```\n\nGood:\n\n```sql\nALTER TABLE orders ADD CONSTRAINT orders_status_not_null CHECK (status IS NOT NULL) NOT VALID;\nALTER TABLE orders VALIDATE CONSTRAINT orders_status_not_null;\nALTER TABLE orders ALTER COLUMN status SET NOT NULL;\nALTER TABLE orders DROP CONSTRAINT orders_status_not_null;\n```\n\n## References\n\n- [PostgreSQL: ALTER TABLE, SET NOT NULL](https://www.postgresql.org/docs/current/sql-altertable.html#SQL-ALTERTABLE-DESC-SET-DROP-NOT-NULL)\n- [PostgreSQL: Table-level lock modes](https://www.postgresql.org/docs/current/explicit-locking.html#LOCKING-TABLES)\n"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "locking"
+                ]
+              }
+            },
+            {
+              "id": "MR201",
+              "name": "alter-column-type-rewrite",
+              "shortDescription": {
+                "text": "Changing a column type rewrites the table"
+              },
+              "help": {
+                "text": "Changing a column type rewrites the table",
+                "markdown": "# MR201 · alter-column-type-rewrite\n\n## What it detects\n\n`ALTER COLUMN … TYPE` on a table that this change set didn't create.\n\n## Why it's dangerous\n\nMost type changes make Postgres rewrite every row and rebuild every index on the table. It holds an `ACCESS EXCLUSIVE` lock for the whole rewrite, so every query on the table waits. On a large table this takes minutes and needs disk space for a second copy of the table.\n\nA few changes only update the catalog and finish at once. Examples are `varchar(n)` to `text`, raising a `varchar` limit, and raising `numeric` precision without changing the scale. migrail reads migrations, not the live schema, so it usually can't see the current type. When the new type allows a catalog-only change, migrail reports a warning with `possible` confidence instead of an error.\n\nA `USING` clause that computes a value always forces a rewrite.\n\n## Lock & impact\n\n| Statement | Lock | Blocks | Work |\n|---|---|---|---|\n| `ALTER COLUMN … TYPE` | `ACCESS EXCLUSIVE` | all queries | rewrites the table and rebuilds its indexes |\n| `ALTER COLUMN … TYPE` (catalog-only change) | `ACCESS EXCLUSIVE`, briefly | all queries, only for a moment | none |\n\nThese locks apply to PostgreSQL 12 through 18.\n\n## How to fix\n\nUse expand and contract:\n\n1. Add a new column with the new type.\n2. Write to both columns from the application and backfill the new column in batches.\n3. Switch reads to the new column, then drop the old column and rename the new one.\n\n```sql\nALTER TABLE orders ADD COLUMN total_new numeric(12, 2);\n```\n\n## When it's safe to ignore\n\n- The change only updates the catalog, for example `varchar(50)` to `text`.\n- The table is empty or very small in every environment.\n- The migration runs during a maintenance window with traffic stopped.\n\n## Examples\n\nBad:\n\n```sql\nALTER TABLE orders ALTER COLUMN id TYPE bigint;\n```\n\nGood:\n\n```sql\nALTER TABLE orders ADD COLUMN id_new bigint;\n```\n\n## References\n\n- [PostgreSQL: ALTER TABLE, SET DATA TYPE](https://www.postgresql.org/docs/current/sql-altertable.html#SQL-ALTERTABLE-DESC-ALTER-COLUMN-TYPE)\n- [PostgreSQL: ALTER TABLE notes on table rewrites](https://www.postgresql.org/docs/current/sql-altertable.html#SQL-ALTERTABLE-NOTES)\n"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "rewrite"
+                ]
+              }
+            },
+            {
+              "id": "MR202",
+              "name": "add-column-volatile-default",
+              "shortDescription": {
+                "text": "Adding a column with a volatile default rewrites the table"
+              },
+              "help": {
+                "text": "Adding a column with a volatile default rewrites the table",
+                "markdown": "# MR202 · add-column-volatile-default\n\n## What it detects\n\n`ADD COLUMN … DEFAULT` with a volatile function, such as `gen_random_uuid()`, `random()` or `clock_timestamp()`, on a table that this change set didn't create. Defaults that call a function migrail doesn't recognize are reported as a warning with `possible` confidence.\n\n## Why it's dangerous\n\nSince PostgreSQL 11, adding a column with a constant or stable default only updates the catalog. A volatile default is different: every row needs its own value, so Postgres computes it for each existing row and rewrites the whole table under an `ACCESS EXCLUSIVE` lock.\n\n## Lock & impact\n\n| Statement | Lock | Blocks | Work |\n|---|---|---|---|\n| `ADD COLUMN … DEFAULT now()` | `ACCESS EXCLUSIVE`, briefly | all queries, only for a moment | none |\n| `ADD COLUMN … DEFAULT gen_random_uuid()` | `ACCESS EXCLUSIVE` | all queries | rewrites the table |\n| `ALTER COLUMN … SET DEFAULT gen_random_uuid()` | `ACCESS EXCLUSIVE`, briefly | all queries, only for a moment | none, applies to new rows only |\n\n## How to fix\n\n1. Add the column without a default.\n2. Set the default, which only affects rows inserted from now on.\n3. Backfill existing rows in batches.\n\n```sql\nALTER TABLE orders ADD COLUMN token uuid;\nALTER TABLE orders ALTER COLUMN token SET DEFAULT gen_random_uuid();\n```\n\n## When it's safe to ignore\n\n- The table is empty or very small in every environment.\n- The function in the default isn't volatile.\n\n## Examples\n\nBad:\n\n```sql\nALTER TABLE orders ADD COLUMN token uuid DEFAULT gen_random_uuid();\n```\n\nGood:\n\n```sql\nALTER TABLE orders ADD COLUMN token uuid;\nALTER TABLE orders ALTER COLUMN token SET DEFAULT gen_random_uuid();\n```\n\n## References\n\n- [PostgreSQL: ALTER TABLE notes on adding columns](https://www.postgresql.org/docs/current/sql-altertable.html#SQL-ALTERTABLE-NOTES)\n- [PostgreSQL: Function volatility categories](https://www.postgresql.org/docs/current/xfunc-volatility.html)\n"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "rewrite"
+                ]
+              }
+            },
+            {
+              "id": "MR205",
+              "name": "vacuum-full-or-cluster",
+              "shortDescription": {
+                "text": "VACUUM FULL and CLUSTER rewrite tables while blocking all queries"
+              },
+              "help": {
+                "text": "VACUUM FULL and CLUSTER rewrite tables while blocking all queries",
+                "markdown": "# MR205 · vacuum-full-or-cluster\n\n## What it detects\n\n`VACUUM FULL` and `CLUSTER` on tables that this change set didn't create, and on the whole database when no table is named.\n\n## Why it's dangerous\n\nBoth commands write a complete new copy of the table and its indexes. They hold an `ACCESS EXCLUSIVE` lock the whole time, so reads and writes stop until they finish, and they need enough free disk space for a second copy.\n\n## Lock & impact\n\n| Statement | Lock | Blocks | Work |\n|---|---|---|---|\n| `VACUUM FULL` | `ACCESS EXCLUSIVE` | all queries | rewrites the table |\n| `CLUSTER` | `ACCESS EXCLUSIVE` | all queries | rewrites the table in index order |\n| `VACUUM` | `SHARE UPDATE EXCLUSIVE` | other schema changes | marks space for reuse |\n\n## How to fix\n\nRebuild the table online with the `pg_repack` extension, which only takes a brief exclusive lock at the end. If `pg_repack` isn't available, run the command in a maintenance window instead of a deploy migration.\n\n## When it's safe to ignore\n\n- The table is small.\n- The migration runs during a maintenance window.\n\n## Examples\n\nBad:\n\n```sql\nVACUUM FULL orders;\n```\n\nGood:\n\n```sql\nVACUUM orders;\n```\n\n## References\n\n- [PostgreSQL: VACUUM](https://www.postgresql.org/docs/current/sql-vacuum.html)\n- [PostgreSQL: CLUSTER](https://www.postgresql.org/docs/current/sql-cluster.html)\n- [pg_repack](https://reorg.github.io/pg_repack/)\n"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "rewrite"
+                ]
+              }
+            },
+            {
+              "id": "MR207",
+              "name": "add-column-not-null-no-default",
+              "shortDescription": {
+                "text": "Adding a NOT NULL column without a default fails on tables with rows"
+              },
+              "help": {
+                "text": "Adding a NOT NULL column without a default fails on tables with rows",
+                "markdown": "# MR207 · add-column-not-null-no-default\n\n## What it detects\n\n`ADD COLUMN … NOT NULL` without a `DEFAULT`, identity or generated value, on a table that this change set didn't create.\n\n## Why it's dangerous\n\nExisting rows have no value for the new column, so Postgres rejects the statement with `column contains null values` as soon as the table has a row. On an empty development database the migration passes, and it fails in production.\n\n## Lock & impact\n\n| Statement | Lock | Blocks | Work |\n|---|---|---|---|\n| `ADD COLUMN … NOT NULL` | `ACCESS EXCLUSIVE` | all queries | fails if the table has rows |\n| `ADD COLUMN … DEFAULT 'x' NOT NULL` | `ACCESS EXCLUSIVE`, briefly | all queries, only for a moment | none for a constant default |\n\n## How to fix\n\nEither add the column with a constant default, or:\n\n1. Add the column as nullable.\n2. Backfill it in batches.\n3. Set `NOT NULL` using a validated `CHECK` constraint first, as `migrail explain MR107` shows.\n\n```sql\nALTER TABLE orders ADD COLUMN status text;\n```\n\n## When it's safe to ignore\n\n- The table is empty in every environment, including production.\n\n## Examples\n\nBad:\n\n```sql\nALTER TABLE orders ADD COLUMN status text NOT NULL;\n```\n\nGood:\n\n```sql\nALTER TABLE orders ADD COLUMN status text NOT NULL DEFAULT 'pending';\n```\n\n## References\n\n- [PostgreSQL: ALTER TABLE, ADD COLUMN](https://www.postgresql.org/docs/current/sql-altertable.html#SQL-ALTERTABLE-DESC-ADD-COLUMN)\n"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "rewrite"
+                ]
+              }
+            },
+            {
+              "id": "MR301",
+              "name": "drop-column-in-use",
+              "shortDescription": {
+                "text": "Dropping a column breaks code that still uses it"
+              },
+              "help": {
+                "text": "Dropping a column breaks code that still uses it",
+                "markdown": "# MR301 · drop-column-in-use\n\n## What it detects\n\n`ALTER TABLE … DROP COLUMN` on a table that this change set didn't create.\n\nmigrail doesn't scan application code yet, so every dropped column is reported as a warning with `possible` confidence. Once code scanning ships, this rule reports an error only when code still uses the column.\n\n## Why it's dangerous\n\nDuring a rolling deploy, instances running the previous release keep reading and writing the column, and their queries fail once it's gone. ORMs that cache the column list, such as ActiveRecord, fail even for queries that don't name the column.\n\n## Lock & impact\n\n| Statement | Lock | Blocks | Work |\n|---|---|---|---|\n| `DROP COLUMN` | `ACCESS EXCLUSIVE`, briefly | all queries, only for a moment | none, the space is reclaimed later |\n\n## How to fix\n\n1. Remove every read and write of the column from the application. In Rails, add it to `ignored_columns`. In Django, remove the field with `SeparateDatabaseAndState`.\n2. Deploy.\n3. Drop the column in a later deploy.\n\n## When it's safe to ignore\n\n- No release that is still running uses the column.\n\n## Examples\n\nBad:\n\n```sql\nALTER TABLE users DROP COLUMN email;\n```\n\nGood: remove the application code first, then drop the column in a later release.\n\n## References\n\n- [PostgreSQL: ALTER TABLE, DROP COLUMN](https://www.postgresql.org/docs/current/sql-altertable.html#SQL-ALTERTABLE-DESC-DROP-COLUMN)\n"
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "tags": [
+                  "compatibility"
+                ]
+              }
+            },
+            {
+              "id": "MR302",
+              "name": "rename-column",
+              "shortDescription": {
+                "text": "Renaming a column breaks code that still uses the old name"
+              },
+              "help": {
+                "text": "Renaming a column breaks code that still uses the old name",
+                "markdown": "# MR302 · rename-column\n\n## What it detects\n\n`ALTER TABLE … RENAME COLUMN` on a table that this change set didn't create.\n\n## Why it's dangerous\n\nA deploy doesn't replace the application at the same moment the migration runs. During a rolling deploy, instances running the previous release keep serving requests, and their queries still use the old column name. Those queries fail as soon as the rename commits. The same happens if the migration runs before the new release starts, or if you roll the release back.\n\nThe rename itself is fast. It takes an `ACCESS EXCLUSIVE` lock only for a moment.\n\n## Lock & impact\n\n| Statement | Lock | Blocks | Work |\n|---|---|---|---|\n| `RENAME COLUMN` | `ACCESS EXCLUSIVE`, briefly | all queries, only for a moment | none |\n\nThese locks apply to PostgreSQL 12 through 18.\n\n## How to fix\n\nRename in three deploys with expand and contract:\n\n1. Add the new column. Write to both columns from the application and backfill the new column.\n2. Read from the new column and stop writing the old one.\n3. Drop the old column.\n\n## When it's safe to ignore\n\n- No application code reads or writes the column.\n- The application stops completely while the migration runs.\n\n## Examples\n\nBad:\n\n```sql\nALTER TABLE users RENAME COLUMN email TO email_address;\n```\n\nGood:\n\n```sql\nALTER TABLE users ADD COLUMN email_address text;\n```\n\n## References\n\n- [PostgreSQL: ALTER TABLE, RENAME](https://www.postgresql.org/docs/current/sql-altertable.html#SQL-ALTERTABLE-DESC-RENAME)\n"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "compatibility"
+                ]
+              }
+            },
+            {
+              "id": "MR303",
+              "name": "rename-table",
+              "shortDescription": {
+                "text": "Renaming a table breaks code that still uses the old name"
+              },
+              "help": {
+                "text": "Renaming a table breaks code that still uses the old name",
+                "markdown": "# MR303 · rename-table\n\n## What it detects\n\n`ALTER TABLE … RENAME TO` on a table that this change set didn't create.\n\n## Why it's dangerous\n\nDuring a rolling deploy, instances running the previous release still query the old table name. Those queries fail as soon as the rename commits.\n\n## Lock & impact\n\n| Statement | Lock | Blocks | Work |\n|---|---|---|---|\n| `RENAME TO` | `ACCESS EXCLUSIVE`, briefly | all queries, only for a moment | none |\n\n## How to fix\n\nKeep the old name working while the application moves to the new one:\n\n1. Rename the table and create a view with the old name in the same transaction. A simple view over one table accepts inserts, updates and deletes.\n2. Change the application to use the new name and deploy.\n3. Drop the view in a later deploy.\n\n```sql\nALTER TABLE users RENAME TO accounts;\nCREATE VIEW users AS SELECT * FROM accounts;\n```\n\n## When it's safe to ignore\n\n- No release that is still running uses the table.\n\n## Examples\n\nBad:\n\n```sql\nALTER TABLE users RENAME TO accounts;\n```\n\nGood:\n\n```sql\nALTER TABLE users RENAME TO accounts;\nCREATE VIEW users AS SELECT * FROM accounts;\n```\n\n## References\n\n- [PostgreSQL: ALTER TABLE, RENAME](https://www.postgresql.org/docs/current/sql-altertable.html#SQL-ALTERTABLE-DESC-RENAME)\n- [PostgreSQL: Updatable views](https://www.postgresql.org/docs/current/sql-createview.html#SQL-CREATEVIEW-UPDATABLE-VIEWS)\n"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "compatibility"
+                ]
+              }
+            },
+            {
+              "id": "MR304",
+              "name": "drop-table-in-use",
+              "shortDescription": {
+                "text": "Dropping a table breaks code that still uses it"
+              },
+              "help": {
+                "text": "Dropping a table breaks code that still uses it",
+                "markdown": "# MR304 · drop-table-in-use\n\n## What it detects\n\n`DROP TABLE` on a table that this change set didn't create, while application code still uses it.\n\nThis rule is off by default until migrail scans application code. Until then, MR502 reports every dropped table. Turn it on with `--rule MR304` to see a compatibility warning as well.\n\n## Why it's dangerous\n\nDuring a rolling deploy, instances running the previous release still query the table. Those queries fail as soon as it's gone.\n\n## Lock & impact\n\n| Statement | Lock | Blocks | Work |\n|---|---|---|---|\n| `DROP TABLE` | `ACCESS EXCLUSIVE`, briefly | all queries, only for a moment | none |\n\n## How to fix\n\n1. Remove every use of the table from the application.\n2. Deploy.\n3. Drop the table in a later deploy.\n\n## When it's safe to ignore\n\n- No release that is still running uses the table.\n\n## Examples\n\nBad:\n\n```sql\nDROP TABLE sessions;\n```\n\nGood: remove the application code first, then drop the table in a later release.\n\n## References\n\n- [PostgreSQL: DROP TABLE](https://www.postgresql.org/docs/current/sql-droptable.html)\n"
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "tags": [
+                  "compatibility"
+                ]
+              }
+            },
+            {
+              "id": "MR401",
+              "name": "edited-applied-migration",
+              "shortDescription": {
+                "text": "A migration that is already on the base branch was edited"
+              },
+              "help": {
+                "text": "A migration that is already on the base branch was edited",
+                "markdown": "# MR401 · edited-applied-migration\n\n## What it detects\n\nA migration file that already exists on the base branch and was modified in the current change, compared with the git merge base.\n\n## Why it's dangerous\n\nMigration tools record which migrations ran and never run them again. A database that already applied this migration keeps the old version, while a new database, such as a fresh test environment, gets the edited one. The schemas drift apart and nothing reports an error until something breaks.\n\n## Lock & impact\n\nNone directly. The risk is environments that no longer match.\n\n## How to fix\n\n1. Revert the changes to the applied migration.\n2. Put the change in a new migration.\n\nWhitespace or comment-only edits are harmless. Ignore the finding with a reason if that's all that changed.\n\n## When it's safe to ignore\n\n- The migration hasn't run anywhere yet, for example it was merged minutes ago and never deployed.\n- The change only touches comments or whitespace.\n\n## Examples\n\nBad: editing `20260101000000_create_orders.sql` after it was merged.\n\nGood: adding `20260917101500_add_orders_status.sql` with the change.\n\n## References\n\n- [PostgreSQL: Data definition](https://www.postgresql.org/docs/current/ddl.html)\n"
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "tags": [
+                  "transaction"
+                ]
+              }
+            },
+            {
+              "id": "MR402",
+              "name": "concurrent-in-transaction",
+              "shortDescription": {
+                "text": "CONCURRENTLY can't run inside a transaction"
+              },
+              "help": {
+                "text": "CONCURRENTLY can't run inside a transaction",
+                "markdown": "# MR402 · concurrent-in-transaction\n\n## What it detects\n\n`CREATE INDEX CONCURRENTLY`, `DROP INDEX CONCURRENTLY` and `REINDEX … CONCURRENTLY` inside a transaction, either after an explicit `BEGIN` or in a migration that the migration tool wraps in a transaction.\n\n## Why it's dangerous\n\nPostgres rejects these commands inside a transaction block with `cannot run inside a transaction block`. The migration fails when it runs, often only in the environment where the migration tool's transaction settings differ.\n\n## Lock & impact\n\nNone. The statement fails before it does any work, and the migration's transaction rolls back.\n\n## How to fix\n\nRun the statement outside a transaction:\n\n1. Move it to its own migration.\n2. Turn off the migration tool's transaction for that migration, for example `-- +goose NO TRANSACTION`, `disable_ddl_transaction!` in Rails or `atomic = False` in Django. For plain SQL files, remove `BEGIN` and `COMMIT` around it.\n\n## When it's safe to ignore\n\nNever. The statement always fails inside a transaction.\n\n## Examples\n\nBad:\n\n```sql\nBEGIN;\nCREATE INDEX CONCURRENTLY idx_orders_status ON orders (status);\nCOMMIT;\n```\n\nGood:\n\n```sql\nCREATE INDEX CONCURRENTLY idx_orders_status ON orders (status);\n```\n\n## References\n\n- [PostgreSQL: CREATE INDEX, building indexes concurrently](https://www.postgresql.org/docs/current/sql-createindex.html#SQL-CREATEINDEX-CONCURRENTLY)\n"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "transaction"
+                ]
+              }
+            },
+            {
+              "id": "MR403",
+              "name": "missing-lock-timeout",
+              "shortDescription": {
+                "text": "Locking DDL runs without a lock_timeout"
+              },
+              "help": {
+                "text": "Locking DDL runs without a lock_timeout",
+                "markdown": "# MR403 · missing-lock-timeout\n\n## What it detects\n\nThe first statement in a migration that locks an existing table, such as `ALTER TABLE`, `CREATE INDEX`, `CREATE TRIGGER`, `TRUNCATE` or `DROP TABLE`, when no `lock_timeout` is set earlier in the migration. It's reported once per migration.\n\n`SET LOCAL lock_timeout` only counts inside a transaction, and a `SET` undone by `ROLLBACK` doesn't count. `CREATE INDEX CONCURRENTLY` isn't reported: it doesn't block reads or writes while it waits.\n\n## Why it's dangerous\n\nA schema change has to wait for every query that holds a conflicting lock on the table. While it waits, it blocks every query that arrives after it, even ones that don't conflict with the running query. A long report query or an idle transaction can turn a millisecond `ALTER TABLE` into minutes of blocked traffic.\n\n`lock_timeout` makes the statement give up instead of waiting, so the queue clears and the migration can be retried.\n\n## Lock & impact\n\nDepends on the statement. The risk is the time spent waiting for the lock, not the lock mode itself.\n\n## How to fix\n\nSet a lock timeout at the top of the migration, and retry the migration when it times out.\n\n```sql\nSET lock_timeout = '5s';\n```\n\n## When it's safe to ignore\n\n- The database or role already sets `lock_timeout`. migrail only sees settings in the migration.\n- The migration only touches tables that nothing else uses.\n\n## Examples\n\nBad:\n\n```sql\nALTER TABLE orders ADD COLUMN note text;\n```\n\nGood:\n\n```sql\nSET lock_timeout = '5s';\nALTER TABLE orders ADD COLUMN note text;\n```\n\n## References\n\n- [PostgreSQL: lock_timeout](https://www.postgresql.org/docs/current/runtime-config-client.html#GUC-LOCK-TIMEOUT)\n"
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "tags": [
+                  "transaction"
+                ]
+              }
+            },
+            {
+              "id": "MR404",
+              "name": "not-valid-validate-same-tx",
+              "shortDescription": {
+                "text": "VALIDATE CONSTRAINT runs in the same transaction as ADD … NOT VALID"
+              },
+              "help": {
+                "text": "VALIDATE CONSTRAINT runs in the same transaction as ADD … NOT VALID",
+                "markdown": "# MR404 · not-valid-validate-same-tx\n\n## What it detects\n\n`VALIDATE CONSTRAINT` in the same transaction as the `ADD CONSTRAINT … NOT VALID` that created the constraint.\n\n## Why it's dangerous\n\n`NOT VALID` avoids a long lock by skipping the scan of existing rows. But the lock taken by `ADD CONSTRAINT` is held until the transaction commits. Validating in the same transaction scans the table while that lock is still held, so writes stay blocked for the whole scan, exactly as if `NOT VALID` had never been used.\n\n## Lock & impact\n\n| Statement | Lock | Blocks | Work |\n|---|---|---|---|\n| `ADD CONSTRAINT … NOT VALID` then `VALIDATE` in one transaction | the `ADD CONSTRAINT` lock, held during the scan | writes, or all queries for `CHECK` | scans the table |\n| `VALIDATE CONSTRAINT` in its own transaction | `SHARE UPDATE EXCLUSIVE` | other schema changes | scans the table |\n\n## How to fix\n\nKeep `ADD CONSTRAINT … NOT VALID` in this migration and move `VALIDATE CONSTRAINT` to the next migration, or commit between the two statements.\n\n## When it's safe to ignore\n\n- The table is empty or very small in every environment.\n\n## Examples\n\nBad:\n\n```sql\nBEGIN;\nALTER TABLE orders ADD CONSTRAINT orders_user_id_fkey FOREIGN KEY (user_id) REFERENCES users (id) NOT VALID;\nALTER TABLE orders VALIDATE CONSTRAINT orders_user_id_fkey;\nCOMMIT;\n```\n\nGood:\n\n```sql\nALTER TABLE orders ADD CONSTRAINT orders_user_id_fkey FOREIGN KEY (user_id) REFERENCES users (id) NOT VALID;\n```\n\n```sql\nALTER TABLE orders VALIDATE CONSTRAINT orders_user_id_fkey;\n```\n\n## References\n\n- [PostgreSQL: ALTER TABLE, VALIDATE CONSTRAINT](https://www.postgresql.org/docs/current/sql-altertable.html#SQL-ALTERTABLE-DESC-VALIDATE-CONSTRAINT)\n"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "transaction"
+                ]
+              }
+            },
+            {
+              "id": "MR501",
+              "name": "truncate-table",
+              "shortDescription": {
+                "text": "TRUNCATE deletes every row"
+              },
+              "help": {
+                "text": "TRUNCATE deletes every row",
+                "markdown": "# MR501 · truncate-table\n\n## What it detects\n\n`TRUNCATE` on tables that this change set didn't create.\n\n## Why it's dangerous\n\n`TRUNCATE` deletes every row, in every environment the migration runs in, including production. It also takes an `ACCESS EXCLUSIVE` lock on each table.\n\n## Lock & impact\n\n| Statement | Lock | Blocks | Work |\n|---|---|---|---|\n| `TRUNCATE` | `ACCESS EXCLUSIVE` | all queries | removes all data |\n\n## How to fix\n\nConfirm that deleting the data is intended. If it is, ignore the finding with a reason so reviewers see why:\n\n```sql\n-- migrail:ignore MR501 reason=\"orders_staging is rebuilt nightly\"\nTRUNCATE orders_staging;\n```\n\n## When it's safe to ignore\n\n- The table holds data that can be rebuilt, such as a cache or a staging table.\n\n## Examples\n\nBad:\n\n```sql\nTRUNCATE orders;\n```\n\n## References\n\n- [PostgreSQL: TRUNCATE](https://www.postgresql.org/docs/current/sql-truncate.html)\n"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "data"
+                ]
+              }
+            },
+            {
+              "id": "MR502",
+              "name": "drop-table",
+              "shortDescription": {
+                "text": "DROP TABLE deletes the table and its data"
+              },
+              "help": {
+                "text": "DROP TABLE deletes the table and its data",
+                "markdown": "# MR502 · drop-table\n\n## What it detects\n\n`DROP TABLE` on tables that this change set didn't create.\n\n## Why it's dangerous\n\nThe table and all its rows are gone once the migration commits. If the drop was a mistake, the only way back is a backup. Code that still queries the table also fails during a rolling deploy.\n\n## Lock & impact\n\n| Statement | Lock | Blocks | Work |\n|---|---|---|---|\n| `DROP TABLE` | `ACCESS EXCLUSIVE`, briefly | all queries, only for a moment | removes the table and its data |\n\n## How to fix\n\nKeep a way back until you're sure the data isn't needed:\n\n1. Back up the table, or rename it instead of dropping it.\n2. Remove every use of it from the application.\n3. Drop it in a later migration.\n\n## When it's safe to ignore\n\n- The data is backed up or no longer needed, and no running code uses the table.\n\n## Examples\n\nBad:\n\n```sql\nDROP TABLE invoices;\n```\n\nGood:\n\n```sql\nALTER TABLE invoices RENAME TO invoices_to_delete;\n```\n\n## References\n\n- [PostgreSQL: DROP TABLE](https://www.postgresql.org/docs/current/sql-droptable.html)\n"
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "tags": [
+                  "data"
+                ]
+              }
+            },
+            {
+              "id": "MR503",
+              "name": "delete-or-update-without-where",
+              "shortDescription": {
+                "text": "UPDATE or DELETE without WHERE changes every row"
+              },
+              "help": {
+                "text": "UPDATE or DELETE without WHERE changes every row",
+                "markdown": "# MR503 · delete-or-update-without-where\n\n## What it detects\n\n`UPDATE` or `DELETE` without a `WHERE` clause on a table that this change set didn't create.\n\n## Why it's dangerous\n\nThe statement changes or deletes every row. It locks every row it touches until the transaction commits, so concurrent writes to the table wait. On a large table it also creates a dead copy of each row, which bloats the table until vacuum catches up.\n\n## Lock & impact\n\n| Statement | Lock | Blocks | Work |\n|---|---|---|---|\n| `UPDATE` / `DELETE` without `WHERE` | `ROW EXCLUSIVE` on the table, row locks on every row | writes to every row | rewrites or deletes every row |\n\n## How to fix\n\n- Add a `WHERE` clause that limits the statement to the rows it should change.\n- For a real full-table backfill, update rows in batches by primary key range, outside the schema migration.\n\n## When it's safe to ignore\n\n- The table is small and the change is intended for every row.\n\n## Examples\n\nBad:\n\n```sql\nUPDATE orders SET status = 'archived';\n```\n\nGood:\n\n```sql\nUPDATE orders SET status = 'archived' WHERE created_at < '2024-01-01';\n```\n\n## References\n\n- [PostgreSQL: UPDATE](https://www.postgresql.org/docs/current/sql-update.html)\n- [PostgreSQL: DELETE](https://www.postgresql.org/docs/current/sql-delete.html)\n"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "data"
+                ]
+              }
+            },
+            {
+              "id": "MR901",
+              "name": "parse-error",
+              "shortDescription": {
+                "text": "SQL could not be parsed"
+              },
+              "help": {
+                "text": "SQL could not be parsed",
+                "markdown": "# MR901 · parse-error\n\n## What it detects\n\nA statement that the database's own parser rejects.\n\n## Why it's dangerous\n\nThe database rejects this statement too, so the migration fails when it runs. migrail can't check a statement it can't parse, so no other rule covers it. migrail still analyzes the other statements in the file.\n\n## Lock & impact\n\nNone. The statement fails before it takes any locks. If the migration runs in a transaction, Postgres rolls back the statements before it.\n\n## How to fix\n\nCorrect the syntax at the reported position. The message comes from the Postgres parser, for example `syntax error at or near \"COLUM\"`.\n\nIf the file uses syntax for another tool, such as `psql` meta-commands like `\\connect`, remove it or move it to a script that the tool runs.\n\n## When it's safe to ignore\n\nNever. A statement that can't be parsed also fails when the migration runs.\n\n## Examples\n\nBad:\n\n```sql\nALTER TABLE orders ADD COLUM status text;\n```\n\nGood:\n\n```sql\nALTER TABLE orders ADD COLUMN status text;\n```\n\n## References\n\n- [PostgreSQL: SQL syntax](https://www.postgresql.org/docs/current/sql-syntax.html)\n"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "tags": [
+                  "diagnostic"
+                ]
+              }
+            },
+            {
+              "id": "MR903",
+              "name": "dynamic-sql",
+              "shortDescription": {
+                "text": "SQL inside a DO block can't be checked"
+              },
+              "help": {
+                "text": "SQL inside a DO block can't be checked",
+                "markdown": "# MR903 · dynamic-sql\n\n## What it detects\n\n`DO` blocks.\n\n## Why it's dangerous\n\nThe body of a `DO` block is PL/pgSQL. Statements inside it, including SQL built with `EXECUTE format(…)`, only exist when the block runs, so migrail can't see which tables they lock, rewrite or change. A dangerous statement inside the block isn't reported.\n\n## Lock & impact\n\nUnknown. It depends on the statements inside the block.\n\n## How to fix\n\nReview the statements in the block by hand. Move plain DDL out of the block so migrail can check it, and keep only the logic that needs PL/pgSQL inside.\n\n## When it's safe to ignore\n\n- You reviewed the statements in the block.\n\n## Examples\n\nReported:\n\n```sql\nDO $$ BEGIN EXECUTE 'CREATE INDEX idx_orders_status ON orders (status)'; END $$;\n```\n\nChecked:\n\n```sql\nCREATE INDEX CONCURRENTLY idx_orders_status ON orders (status);\n```\n\n## References\n\n- [PostgreSQL: DO](https://www.postgresql.org/docs/current/sql-do.html)\n"
+              },
+              "defaultConfiguration": {
+                "level": "note"
+              },
+              "properties": {
+                "tags": [
+                  "diagnostic"
+                ]
+              }
+            },
+            {
+              "id": "MR904",
+              "name": "ignore-without-reason",
+              "shortDescription": {
+                "text": "An ignore comment has no reason"
+              },
+              "help": {
+                "text": "An ignore comment has no reason",
+                "markdown": "# MR904 · ignore-without-reason\n\n## What it detects\n\nA `migrail:ignore` or `migrail:ignore-file` comment without `reason=\"…\"`, when reasons are required. Reasons are required by default.\n\n## Why it's dangerous\n\nAn ignore without a reason tells the next reviewer nothing about why the finding is safe. migrail doesn't apply the ignore, so the original finding is still reported.\n\n## Lock & impact\n\nNone.\n\n## How to fix\n\nAdd a reason that explains why the finding is safe here:\n\n```sql\n-- migrail:ignore MR101 reason=\"orders has fewer than 100 rows in every environment\"\nCREATE INDEX idx_orders_status ON orders (status);\n```\n\n## When it's safe to ignore\n\nSet `policy.require_ignore_reason: false` in `.migrail.yaml` if your team doesn't want reasons.\n\n## Examples\n\nBad:\n\n```sql\n-- migrail:ignore MR101\nCREATE INDEX idx_orders_status ON orders (status);\n```\n\nGood:\n\n```sql\n-- migrail:ignore MR101 reason=\"orders is empty until launch\"\nCREATE INDEX idx_orders_status ON orders (status);\n```\n\n## References\n\n- [migrail: Inline suppressions](https://github.com/bbrainttech/migrail#ignoring-findings)\n"
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "tags": [
+                  "diagnostic"
+                ]
+              }
+            },
+            {
+              "id": "MR905",
+              "name": "unused-ignore",
+              "shortDescription": {
+                "text": "An ignore comment doesn't match any finding"
+              },
+              "help": {
+                "text": "An ignore comment doesn't match any finding",
+                "markdown": "# MR905 · unused-ignore\n\n## What it detects\n\nA `migrail:ignore` or `migrail:ignore-file` comment that doesn't suppress any finding: the rule it names isn't reported for the next statement or the file.\n\n## Why it's dangerous\n\nStale ignores pile up and hide future findings by accident. If the statement later changes in a way that triggers the rule, the old comment silences it without anyone deciding that it's safe.\n\n## Lock & impact\n\nNone.\n\n## How to fix\n\nRemove the comment, or move it directly above the statement it's meant for and check the rule ID.\n\n## When it's safe to ignore\n\nNever needed. Delete the comment instead.\n\n## Examples\n\nReported, because `CREATE INDEX CONCURRENTLY` doesn't trigger MR101:\n\n```sql\n-- migrail:ignore MR101 reason=\"small table\"\nCREATE INDEX CONCURRENTLY idx_orders_status ON orders (status);\n```\n\n## References\n\n- [migrail: Inline suppressions](https://github.com/bbrainttech/migrail#ignoring-findings)\n"
+              },
+              "defaultConfiguration": {
+                "level": "note"
+              },
+              "properties": {
+                "tags": [
+                  "diagnostic"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "invocations": [
+        {
+          "executionSuccessful": true,
+          "toolExecutionNotifications": []
+        }
+      ],
+      "columnKind": "unicodeCodePoints",
+      "results": [
+        {
+          "ruleId": "MR101",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "Index creation blocks writes on \"orders\".\n\nPostgres holds this lock until the whole index is built. INSERT, UPDATE and DELETE on the table wait for the entire build.\n\nFix: Build the index concurrently, outside a transaction:\n\nCREATE INDEX CONCURRENTLY idx_orders_status ON orders (status);"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "../../testdata/sql/MR101/bad/basic.sql",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1,
+                  "endLine": 1,
+                  "endColumn": 50
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "migrail/v1": "259e7a9b78aa2b606f19d6e8ba7419f0b86d3ce39c7288798abe5889d51de550"
+          },
+          "properties": {
+            "confidence": "definite",
+            "slug": "create-index-non-concurrent"
+          }
+        },
+        {
+          "ruleId": "MR403",
+          "ruleIndex": 16,
+          "level": "warning",
+          "message": {
+            "text": "No lock_timeout before locking DDL.\n\nIf a long query holds a lock on orders, this statement waits for it, and every query that arrives afterwards queues behind this statement.\n\nFix: Set a lock timeout at the top of the migration, and retry the migration if it times out:\n\nSET lock_timeout = '5s';"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "../../testdata/sql/MR101/bad/basic.sql",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1,
+                  "endLine": 1,
+                  "endColumn": 50
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "migrail/v1": "8cd3cc11efd06427b906077b674c2a8e69eda33cbe66c235608efe8ad944058f"
+          },
+          "properties": {
+            "confidence": "likely",
+            "slug": "missing-lock-timeout"
+          }
+        },
+        {
+          "ruleId": "MR403",
+          "ruleIndex": 16,
+          "level": "warning",
+          "message": {
+            "text": "No lock_timeout before locking DDL.\n\nIf a long query holds a lock on users, this statement waits for it, and every query that arrives afterwards queues behind this statement.\n\nFix: Set a lock timeout at the top of the migration, and retry the migration if it times out:\n\nSET lock_timeout = '5s';"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "../../testdata/sql/MR302/bad/in_transaction.sql",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 2,
+                  "startColumn": 1,
+                  "endLine": 2,
+                  "endColumn": 43
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "migrail/v1": "cb7298f4bb6a35a82f28e587c33463a2026543c10238f862ca4a1f2205609032"
+          },
+          "properties": {
+            "confidence": "likely",
+            "slug": "missing-lock-timeout"
+          }
+        },
+        {
+          "ruleId": "MR302",
+          "ruleIndex": 11,
+          "level": "error",
+          "message": {
+            "text": "Renaming column \"users.users\" breaks running code.\n\nDuring a rolling deploy, instances running the previous release still query \"users\". Those queries fail as soon as this migration runs.\n\nFix: Rename in three deploys with expand and contract:\n\nAdd username, write to both columns and backfill it\n\nRead from username and stop writing users\n\nDrop users"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "../../testdata/sql/MR302/bad/in_transaction.sql",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 3,
+                  "startColumn": 35,
+                  "endLine": 3,
+                  "endColumn": 40
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "migrail/v1": "f4f916d715797bfadd32fd37278f24c2d9463e38f41fa3da0264b759c559451c"
+          },
+          "properties": {
+            "confidence": "likely",
+            "slug": "rename-column"
+          }
+        },
+        {
+          "ruleId": "MR403",
+          "ruleIndex": 16,
+          "level": "warning",
+          "message": {
+            "text": "No lock_timeout before locking DDL.\n\nIf a long query holds a lock on orders, this statement waits for it, and every query that arrives afterwards queues behind this statement.\n\nFix: Set a lock timeout at the top of the migration, and retry the migration if it times out:\n\nSET lock_timeout = '5s';"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "../../testdata/sql/MR901/bad/misspelled_keyword.sql",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 2,
+                  "startColumn": 1,
+                  "endLine": 2,
+                  "endColumn": 40
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "migrail/v1": "89334d1e6f1e267214938bb465e893acd6e3cbf3b7216ec35e79e277c646c5cf"
+          },
+          "properties": {
+            "confidence": "likely",
+            "slug": "missing-lock-timeout"
+          }
+        },
+        {
+          "ruleId": "MR901",
+          "ruleIndex": 21,
+          "level": "error",
+          "message": {
+            "text": "Could not parse SQL.\n\nsyntax error at or near \"SELEC\". Other statements in this file were still analyzed."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "../../testdata/sql/MR901/bad/misspelled_keyword.sql",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 3,
+                  "startColumn": 1,
+                  "endLine": 3,
+                  "endColumn": 6
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "migrail/v1": "59a9090b93deb7393653eac4e09c611e56629e16aa758f6d8de1364d3256151b"
+          },
+          "properties": {
+            "confidence": "definite",
+            "slug": "parse-error"
+          }
+        },
+        {
+          "ruleId": "MR904",
+          "ruleIndex": 23,
+          "level": "warning",
+          "message": {
+            "text": "Ignore comment has no reason, so it doesn't apply.\n\nReviewers need to know why a finding is safe to ignore, so migrail requires a reason and still reports the finding.\n\nFix: Add a reason to the comment:\n\n-- migrail:ignore MR101 reason=\"why this is safe\""
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "../../testdata/sql/MR904/bad/no_reason.sql",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1,
+                  "endLine": 1,
+                  "endColumn": 24
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "migrail/v1": "75e0c6c9ae5b89f3e28fe79c15b583f3d53c2d121cc57491b7793fc76cf7b3af"
+          },
+          "properties": {
+            "confidence": "definite",
+            "slug": "ignore-without-reason"
+          }
+        },
+        {
+          "ruleId": "MR101",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "Index creation blocks writes on \"orders\".\n\nPostgres holds this lock until the whole index is built. INSERT, UPDATE and DELETE on the table wait for the entire build.\n\nFix: Build the index concurrently, outside a transaction:\n\nCREATE INDEX CONCURRENTLY idx_orders_status ON orders (status);"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "../../testdata/sql/MR904/bad/no_reason.sql",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 2,
+                  "startColumn": 1,
+                  "endLine": 2,
+                  "endColumn": 50
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "migrail/v1": "90cc7666d902f538e133c72e8c7b879278a69e02f54f004bc9c0a84823719010"
+          },
+          "properties": {
+            "confidence": "definite",
+            "slug": "create-index-non-concurrent"
+          }
+        },
+        {
+          "ruleId": "MR403",
+          "ruleIndex": 16,
+          "level": "warning",
+          "message": {
+            "text": "No lock_timeout before locking DDL.\n\nIf a long query holds a lock on orders, this statement waits for it, and every query that arrives afterwards queues behind this statement.\n\nFix: Set a lock timeout at the top of the migration, and retry the migration if it times out:\n\nSET lock_timeout = '5s';"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "../../testdata/sql/MR904/bad/no_reason.sql",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 2,
+                  "startColumn": 1,
+                  "endLine": 2,
+                  "endColumn": 50
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "migrail/v1": "d977fcbe340ea347d1308b6a1fddc86f1be1dcf9da4fc845f744ca389afb3728"
+          },
+          "properties": {
+            "confidence": "likely",
+            "slug": "missing-lock-timeout"
+          }
+        }
+      ]
+    }
+  ]
+}

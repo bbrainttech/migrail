@@ -18,7 +18,7 @@
   [38;2;230;230;234m                            root)[m
         [1;38;2;230;230;234m--fail-on string[m      [38;2;230;230;234mexit with code 1 on findings at or above: error, warning,[m
   [38;2;230;230;234m                            notice or never (default "error")[m
-    [1;38;2;230;230;234m-f, --format string[m       [38;2;230;230;234moutput format: pretty or json (default "pretty")[m
+    [1;38;2;230;230;234m-f, --format string[m       [38;2;230;230;234moutput format: pretty, json or sarif (default "pretty")[m
         [1;38;2;230;230;234m--framework string[m    [38;2;230;230;234mmigration tool to use instead of detecting it: sqitch, atlas,[m
   [38;2;230;230;234m                            prisma, drizzle, goose, dbmate, golang-migrate, flyway, sql[m
     [1;38;2;230;230;234m-q, --quiet[m               [38;2;230;230;234mprint only findings and the summary[m

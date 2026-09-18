@@ -14,10 +14,11 @@ import (
 )
 
 const (
-	fixtures   = "../../testdata/sql"
-	goldenDir  = "../../testdata/golden/json"
-	mr101Basic = fixtures + "/MR101/bad/basic.sql"
-	projects   = "../../testdata/projects"
+	fixtures       = "../../testdata/sql"
+	goldenDir      = "../../testdata/golden/json"
+	sarifGoldenDir = "../../testdata/golden/sarif"
+	mr101Basic     = fixtures + "/MR101/bad/basic.sql"
+	projects       = "../../testdata/projects"
 )
 
 type checkRun struct {
@@ -69,7 +70,7 @@ func TestCheckExitCodes(t *testing.T) {
 		{name: "tables created earlier in the change set are new", args: []string{"check", "-f", "json", "--dir", projects + "/plain"}, wantCode: exitOK},
 		{name: "forced framework", args: []string{"check", "-f", "json", "--framework", "goose", projects + "/goose/migrations/00003_no_tx.sql"}, wantCode: exitOK},
 		{name: "unknown framework", args: []string{"check", "--framework", "rails", mr101Basic}, wantCode: exitUsage, wantStderr: `Unknown --framework "rails"`},
-		{name: "unsupported format", args: []string{"check", "-f", "sarif", mr101Basic}, wantCode: exitUsage, wantStderr: `Unsupported format "sarif"`},
+		{name: "unsupported format", args: []string{"check", "-f", "xml", mr101Basic}, wantCode: exitUsage, wantStderr: `Unsupported format "xml"`},
 		{name: "invalid fail-on", args: []string{"check", "--fail-on", "fatal", mr101Basic}, wantCode: exitUsage},
 		{name: "unsupported version", args: []string{"check", "--db-version", "11", mr101Basic}, wantCode: exitUsage, wantStderr: "PostgreSQL 12 to 18"},
 		{name: "invalid version", args: []string{"check", "--db-version", "latest", mr101Basic}, wantCode: exitUsage},
@@ -144,4 +145,19 @@ func TestCheckJSONGolden(t *testing.T) {
 			golden.Assert(t, filepath.Join(goldenDir, tt.name+".json"), run.stdout)
 		})
 	}
+}
+
+func TestCheckSARIFGolden(t *testing.T) {
+	t.Parallel()
+
+	args := []string{
+		"check", "-f", formatSARIF, "--db-version", "16", "--fail-on", failOnNever,
+		mr101Basic,
+		fixtures + "/MR302/bad/in_transaction.sql",
+		fixtures + "/MR901/bad/misspelled_keyword.sql",
+		fixtures + "/MR904/bad/no_reason.sql",
+	}
+	run := runCLI(t, "", args...)
+
+	golden.Assert(t, filepath.Join(sarifGoldenDir, "mixed.sarif"), run.stdout)
 }

@@ -18,7 +18,7 @@
                               root)
         [1m--fail-on string[m      exit with code 1 on findings at or above: error, warning,
                               notice or never (default "error")
-    [1m-f, --format string[m       output format: pretty or json (default "pretty")
+    [1m-f, --format string[m       output format: pretty, json or sarif (default "pretty")
         [1m--framework string[m    migration tool to use instead of detecting it: sqitch, atlas,
                               prisma, drizzle, goose, dbmate, golang-migrate, flyway, sql
     [1m-q, --quiet[m               print only findings and the summary

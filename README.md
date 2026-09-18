@@ -166,7 +166,7 @@ migrail rules
 | `--fail-on` | Exit with code 1 on findings at or above `error` (default), `warning` or `notice`. `never` always exits 0. |
 | `-r`, `--rule` | Only run these rules, by ID or slug. |
 | `--skip-rule` | Skip these rules, by ID or slug. |
-| `-f`, `--format` | `pretty` (default) or `json`. |
+| `-f`, `--format` | `pretty` (default), `json` or `sarif`. |
 | `-d`, `--dir` | Project root to search for migrations. Defaults to the repository root. |
 | `--all` | Check every migration, not only the ones changed since the base branch. |
 | `--base` | Git branch or commit to compare against. |
@@ -184,6 +184,17 @@ migrail rules
 | `--no-hyperlinks` | Don't print clickable file links. |
 
 Findings go to standard output. Notices and progress go to standard error, so `migrail check -f json > report.json` stays clean.
+
+`-f sarif` writes SARIF 2.1.0 for GitHub code scanning and editors. Run it from the repository root so file paths match the checkout, then upload the file:
+
+```yaml
+- run: migrail check -f sarif --fail-on never > migrail.sarif
+- uses: github/codeql-action/upload-sarif@v3
+  with:
+    sarif_file: migrail.sarif
+```
+
+Ignored findings are included as suppressed results with their reason.
 
 Exit codes: `0` no failing findings, `1` findings at or above `--fail-on`, `2` usage error, `4` internal error.
 

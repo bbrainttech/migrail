@@ -18,7 +18,7 @@
                               root)
         --fail-on string      exit with code 1 on findings at or above: error, warning,
                               notice or never (default "error")
-    -f, --format string       output format: pretty or json (default "pretty")
+    -f, --format string       output format: pretty, json or sarif (default "pretty")
         --framework string    migration tool to use instead of detecting it: sqitch, atlas,
                               prisma, drizzle, goose, dbmate, golang-migrate, flyway, sql
     -q, --quiet               print only findings and the summary

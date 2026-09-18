@@ -27,6 +27,7 @@ mem.prof
 .zig-cache/
 zig-out/
 *.sarif
+!/testdata/golden/sarif/*.sarif
 report.json
 .task/
 
