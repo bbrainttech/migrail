@@ -1516,6 +1516,7 @@ Durations are **focused working days** (a day = one solid Claude Code session wi
 - **Done when:** every project in `testdata/projects/` passes integration tests; `npx migrail` / `pipx run migrail` / `gem`… work on clean machines. **Release v0.2.**
 - Implementation notes (2026-09-18):
   - `-f sarif` writes SARIF 2.1.0 (`internal/report/sarif`), validated against the OASIS schema. Every rule is listed under `tool.driver.rules` with its docs as `help.markdown`. Results carry `partialFingerprints["migrail/v1"]`, `columnKind: unicodeCodePoints`, and URIs relative to the working directory under `%SRCROOT%`. Ignored findings are kept as results with `suppressions` (`inSource` for comments, `external` for config). Rule errors become `toolExecutionNotifications` and set `executionSuccessful: false`.
+  - `-f github` (`internal/report/github`) prints one `::error`/`::warning`/`::notice` command per finding with `file`, `line`, `endLine`, and `col`/`endColumn` for single-line spans, titled `<ID> <title>`, with the why, fix and an `explain` hint as the message. Values are escaped per the workflow command rules. Ignored findings are skipped. It ends with a one-line count.
 
 ### M5: App-aware (days 15–19)
 - Codescan index + extractors for 7 languages; MR301/MR304/MR305 full logic incl. same-diff detection.

@@ -34,8 +34,8 @@
                               error, warning, notice
                               or never (default "error")
     -f, --format string       output format: pretty,
-                              json or sarif (default
-                              "pretty")
+                              json, sarif or github
+                              (default "pretty")
         --framework string    migration tool to use
                               instead of detecting
                               it: sqitch, atlas,

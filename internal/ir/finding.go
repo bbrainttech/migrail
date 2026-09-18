@@ -113,3 +113,14 @@ type FixStep struct {
 	Lang  string
 	Code  string
 }
+
+func (s FixStep) PlainText() string {
+	switch {
+	case s.Title != "" && s.Code != "":
+		return s.Title + ":\n" + s.Code
+	case s.Code != "":
+		return s.Code
+	default:
+		return s.Title
+	}
+}

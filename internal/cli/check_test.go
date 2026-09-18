@@ -14,11 +14,12 @@ import (
 )
 
 const (
-	fixtures       = "../../testdata/sql"
-	goldenDir      = "../../testdata/golden/json"
-	sarifGoldenDir = "../../testdata/golden/sarif"
-	mr101Basic     = fixtures + "/MR101/bad/basic.sql"
-	projects       = "../../testdata/projects"
+	fixtures        = "../../testdata/sql"
+	goldenDir       = "../../testdata/golden/json"
+	sarifGoldenDir  = "../../testdata/golden/sarif"
+	githubGoldenDir = "../../testdata/golden/github"
+	mr101Basic      = fixtures + "/MR101/bad/basic.sql"
+	projects        = "../../testdata/projects"
 )
 
 type checkRun struct {
@@ -160,4 +161,19 @@ func TestCheckSARIFGolden(t *testing.T) {
 	run := runCLI(t, "", args...)
 
 	golden.Assert(t, filepath.Join(sarifGoldenDir, "mixed.sarif"), run.stdout)
+}
+
+func TestCheckGitHubGolden(t *testing.T) {
+	t.Parallel()
+
+	args := []string{
+		"check", "-f", formatGitHub, "--db-version", "16", "--fail-on", failOnNever,
+		mr101Basic,
+		fixtures + "/MR302/bad/in_transaction.sql",
+		fixtures + "/MR904/bad/no_reason.sql",
+		fixtures + "/MR904/good/with_reason.sql",
+	}
+	run := runCLI(t, "", args...)
+
+	golden.Assert(t, filepath.Join(githubGoldenDir, "mixed.txt"), run.stdout)
 }

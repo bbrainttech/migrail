@@ -228,22 +228,11 @@ func message(finding ir.Finding) string {
 		parts = append(parts, "Fix: "+finding.Fix.Summary)
 
 		for _, step := range finding.Fix.Steps {
-			parts = append(parts, fixStep(step))
+			parts = append(parts, step.PlainText())
 		}
 	}
 
 	return strings.Join(parts, "\n\n")
-}
-
-func fixStep(step ir.FixStep) string {
-	switch {
-	case step.Title != "" && step.Code != "":
-		return step.Title + ":\n" + step.Code
-	case step.Code != "":
-		return step.Code
-	default:
-		return step.Title
-	}
 }
 
 func physical(loc ir.SourceLoc) physicalLocation {
