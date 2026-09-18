@@ -43,6 +43,11 @@
   [38;2;230;230;234m                            prisma, drizzle,[m
   [38;2;230;230;234m                            goose, dbmate,[m
   [38;2;230;230;234m                            golang-migrate, flyway, sql[m
+    [1;38;2;230;230;234m-o, --output file[m         [38;2;230;230;234malso write a report to[m
+  [38;2;230;230;234m                            a file, such as[m
+  [38;2;230;230;234m                            migrail.sarif or[m
+  [38;2;230;230;234m                            junit=report.xml[m
+  [38;2;230;230;234m                            (repeatable)[m
     [1;38;2;230;230;234m-q, --quiet[m               [38;2;230;230;234mprint only findings[m
   [38;2;230;230;234m                            and the summary[m
     [1;38;2;230;230;234m-r, --rule strings[m        [38;2;230;230;234monly run these rules,[m

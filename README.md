@@ -167,6 +167,7 @@ migrail rules
 | `-r`, `--rule` | Only run these rules, by ID or slug. |
 | `--skip-rule` | Skip these rules, by ID or slug. |
 | `-f`, `--format` | `pretty` (default), `json`, `sarif`, `github`, `markdown` or `junit`. |
+| `-o`, `--output` | Also write a report to a file. The format comes from the extension (`.sarif`, `.json`, `.md`, `.xml` for JUnit, `.txt` for plain text), or name it: `-o junit=report.xml`. Repeat it for several files. |
 | `-d`, `--dir` | Project root to search for migrations. Defaults to the repository root. |
 | `--all` | Check every migration, not only the ones changed since the base branch. |
 | `--base` | Git branch or commit to compare against. |
@@ -185,11 +186,18 @@ migrail rules
 
 Findings go to standard output. Notices and progress go to standard error, so `migrail check -f json > report.json` stays clean.
 
+One run can print findings in the terminal and write reports for other tools at the same time:
+
+```
+migrail check -o migrail.sarif -o summary.md -o junit=reports/migrail.xml
+```
+
 `-f sarif` writes SARIF 2.1.0 for GitHub code scanning and editors. Run it from the repository root so file paths match the checkout, then upload the file:
 
 ```yaml
-- run: migrail check -f sarif --fail-on never > migrail.sarif
+- run: migrail check -o migrail.sarif
 - uses: github/codeql-action/upload-sarif@v3
+  if: always()
   with:
     sarif_file: migrail.sarif
 ```

@@ -28,6 +28,8 @@
         [1m--framework string[m    migration tool to use instead of detecting
                               it: sqitch, atlas, prisma, drizzle, goose,
                               dbmate, golang-migrate, flyway, sql
+    [1m-o, --output file[m         also write a report to a file, such as
+                              migrail.sarif or junit=report.xml (repeatable)
     [1m-q, --quiet[m               print only findings and the summary
     [1m-r, --rule strings[m        only run these rules, by ID or slug
         [1m--skip-rule strings[m   skip these rules, by ID or slug

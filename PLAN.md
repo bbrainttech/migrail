@@ -931,8 +931,8 @@ CREATE INDEX idx_orders_status ON orders (status);
   -r, --rule <id>…             only these rules
       --skip-rule <id>…        skip rules
       --fail-on <level>        error|warning|notice|never
-  -f, --format <fmt>           pretty|json|sarif|github|markdown|junit (repeatable with -o)
-  -o, --output <file>          write format to file (e.g. -f sarif -o out.sarif)
+  -f, --format <fmt>           pretty|json|sarif|github|markdown|junit (stdout)
+  -o, --output <[fmt=]file>    also write a report to a file, format from the extension or fmt= (repeatable); stdout keeps -f
   -i, --interactive            open TUI explorer
       --ci                     CI mode: no TTY features, auto-detect CI provider formats
       --compact                one line per finding
@@ -1519,6 +1519,7 @@ Durations are **focused working days** (a day = one solid Claude Code session wi
   - `-f github` (`internal/report/github`) prints one `::error`/`::warning`/`::notice` command per finding with `file`, `line`, `endLine`, and `col`/`endColumn` for single-line spans, titled `<ID> <title>`, with the why, fix and an `explain` hint as the message. Values are escaped per the workflow command rules. Ignored findings are skipped. It ends with a one-line count.
   - `-f markdown` (`internal/report/markdown`) writes a `## migrail` heading, a count line that names how many findings fail `--fail-on`, a summary table, and a `<details>` section per finding with the statement, lock, why, numbered fix steps and an `explain` hint. A clean run prints "No issues found". Ignored findings are left out and counted in the footer. Code fences grow when the SQL contains backticks, and table cells escape `|`, `&`, `<` and `>`.
   - `-f junit` (`internal/report/junit`) writes one `testsuite` with a `testcase` per migration. Findings at or above `--fail-on` become one `<failure>` per migration; lower findings go to `<system-out>`; rule errors become `<error>`. Bodies are CDATA so the report stays readable. `Severity.FailsAt` treats `--fail-on never` as nothing failing, and the markdown, junit and exit-code paths all use it.
+  - `-o/--output` (decided 2026-09-18) is repeatable and independent of `-f`: `-f` picks what goes to stdout, each `-o` adds a file. The format comes from the extension (`.sarif`, `.json`, `.md`/`.markdown`, `.xml` → junit, `.txt` → plain pretty) or an explicit `fmt=path`. Unknown extensions are a usage error. Parent directories are created. Files are written before stdout, with no color or links. This lets one CI run print findings, write SARIF and a job summary.
 
 ### M5: App-aware (days 15–19)
 - Codescan index + extractors for 7 languages; MR301/MR304/MR305 full logic incl. same-diff detection.

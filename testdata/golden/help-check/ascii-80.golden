@@ -28,6 +28,8 @@
         --framework string    migration tool to use instead of detecting
                               it: sqitch, atlas, prisma, drizzle, goose,
                               dbmate, golang-migrate, flyway, sql
+    -o, --output file         also write a report to a file, such as
+                              migrail.sarif or junit=report.xml (repeatable)
     -q, --quiet               print only findings and the summary
     -r, --rule strings        only run these rules, by ID or slug
         --skip-rule strings   skip these rules, by ID or slug

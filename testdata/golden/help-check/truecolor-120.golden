@@ -22,6 +22,8 @@
   [38;2;230;230;234m                            (default "pretty")[m
         [1;38;2;230;230;234m--framework string[m    [38;2;230;230;234mmigration tool to use instead of detecting it: sqitch, atlas,[m
   [38;2;230;230;234m                            prisma, drizzle, goose, dbmate, golang-migrate, flyway, sql[m
+    [1;38;2;230;230;234m-o, --output file[m         [38;2;230;230;234malso write a report to a file, such as migrail.sarif or[m
+  [38;2;230;230;234m                            junit=report.xml (repeatable)[m
     [1;38;2;230;230;234m-q, --quiet[m               [38;2;230;230;234mprint only findings and the summary[m
     [1;38;2;230;230;234m-r, --rule strings[m        [38;2;230;230;234monly run these rules, by ID or slug[m
         [1;38;2;230;230;234m--skip-rule strings[m   [38;2;230;230;234mskip these rules, by ID or slug[m

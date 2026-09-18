@@ -15,17 +15,10 @@ import (
 	pg "github.com/bbrainttech/migrail/internal/dialect/postgres"
 	"github.com/bbrainttech/migrail/internal/discovery"
 	"github.com/bbrainttech/migrail/internal/ir"
-	"github.com/bbrainttech/migrail/internal/report/github"
-	"github.com/bbrainttech/migrail/internal/report/jsonreport"
-	"github.com/bbrainttech/migrail/internal/report/junit"
-	"github.com/bbrainttech/migrail/internal/report/markdown"
-	"github.com/bbrainttech/migrail/internal/report/pretty"
-	"github.com/bbrainttech/migrail/internal/report/sarif"
 	"github.com/bbrainttech/migrail/internal/rules"
 	"github.com/bbrainttech/migrail/internal/suppress"
 	"github.com/bbrainttech/migrail/internal/ui/components"
 	"github.com/bbrainttech/migrail/internal/ui/progress"
-	"github.com/bbrainttech/migrail/internal/ui/term"
 )
 
 const (
@@ -57,6 +50,7 @@ type checkOptions struct {
 	all       bool
 	root      string
 	cfg       config.Config
+	outputs   []string
 	compact   bool
 	quiet     bool
 	verbose   bool
@@ -88,6 +82,7 @@ func newCheckCommand(ui *uiFlags) *cobra.Command {
 	flags.StringVarP(&opts.dir, "dir", "d", "", "project root to search for migrations (default: the repository root)")
 	flags.BoolVar(&opts.all, "all", false, "check every migration, not only the ones changed since the base branch")
 	flags.StringVar(&opts.base, "base", "", "git branch or commit to compare against (default: origin/HEAD, main or master)")
+	flags.StringArrayVarP(&opts.outputs, "output", "o", nil, "also write a report to a `file`, such as migrail.sarif or junit=report.xml (repeatable)")
 	flags.BoolVar(&opts.compact, "compact", false, "print one line per finding")
 	flags.BoolVarP(&opts.quiet, "quiet", "q", false, "print only findings and the summary")
 	flags.BoolVarP(&opts.verbose, "verbose", "v", false, "print each phase with its timing")
@@ -100,15 +95,7 @@ func runCheck(ctx context.Context, cmd *cobra.Command, args []string, opts check
 	started := time.Now()
 	dialect := pg.New()
 
-	if err := applyConfig(cmd, &opts); err != nil {
-		return err
-	}
-
-	if err := opts.ui.validate(); err != nil {
-		return err
-	}
-
-	dbVersion, err := validateCheckOptions(dialect, opts)
+	dbVersion, outputs, err := prepareCheck(cmd, dialect, &opts)
 	if err != nil {
 		return err
 	}
@@ -156,11 +143,47 @@ func runCheck(ctx context.Context, cmd *cobra.Command, args []string, opts check
 
 	finish.Done("Analyzed", fmt.Sprintf("%d %s %s %d rules", result.Statements, components.Plural(result.Statements, "statement", "statements"), stderr.theme.Symbols.Dot, result.RulesRun))
 
-	if err := writeCheckReport(cmd, opts, settings, dialect, dbVersion, migrations, scope, result, time.Since(started)); err != nil {
+	report := checkReport{
+		dialect:    dialect,
+		dbVersion:  dbVersion,
+		migrations: migrations,
+		scope:      scope,
+		result:     result,
+		failOn:     opts.failOn,
+		elapsed:    time.Since(started),
+	}
+
+	if err := writeOutputs(report, outputs); err != nil {
+		return err
+	}
+
+	if err := writeStdout(cmd.OutOrStdout(), opts, settings, report); err != nil {
 		return internalError(err)
 	}
 
 	return checkOutcome(result, opts.failOn, opts.format == formatPretty)
+}
+
+func prepareCheck(cmd *cobra.Command, dialect *pg.Dialect, opts *checkOptions) (ir.Version, []outputTarget, error) {
+	if err := applyConfig(cmd, opts); err != nil {
+		return ir.Version{}, nil, err
+	}
+
+	if err := opts.ui.validate(); err != nil {
+		return ir.Version{}, nil, err
+	}
+
+	dbVersion, err := validateCheckOptions(dialect, *opts)
+	if err != nil {
+		return ir.Version{}, nil, err
+	}
+
+	outputs, err := parseOutputs(opts.outputs)
+	if err != nil {
+		return ir.Version{}, nil, err
+	}
+
+	return dbVersion, outputs, nil
 }
 
 func collectMigrations(
@@ -199,81 +222,6 @@ func collectMigrations(
 	}
 
 	return migrations, scope, nil
-}
-
-func writeCheckReport(
-	cmd *cobra.Command,
-	opts checkOptions,
-	settings term.Settings,
-	dialect *pg.Dialect,
-	dbVersion ir.Version,
-	migrations []*ir.Migration,
-	scope changeScope,
-	result analyze.Result,
-	elapsed time.Duration,
-) error {
-	if opts.format == formatJUnit {
-		return junit.Write(cmd.OutOrStdout(), junit.Input{Migrations: migrations, Result: result, FailOn: opts.failOn})
-	}
-
-	if opts.format == formatMarkdown {
-		return markdown.Write(cmd.OutOrStdout(), markdown.Input{
-			ToolVersion: currentBuildInfo().Version,
-			Dialect:     dialect.Name(),
-			DBVersion:   dbVersion,
-			Migrations:  migrations,
-			Result:      result,
-			FailOn:      opts.failOn,
-		})
-	}
-
-	if opts.format == formatGitHub {
-		return github.Write(cmd.OutOrStdout(), github.Input{Result: result})
-	}
-
-	if opts.format == formatSARIF {
-		return sarif.Write(cmd.OutOrStdout(), sarif.Input{
-			ToolVersion: currentBuildInfo().Version,
-			Rules:       ruleMetas(),
-			Result:      result,
-		})
-	}
-
-	if opts.format == formatJSON {
-		return jsonreport.Write(cmd.OutOrStdout(), jsonreport.Input{
-			ToolVersion: currentBuildInfo().Version,
-			Dialect:     dialect.Name(),
-			DBVersion:   dbVersion,
-			Migrations:  migrations,
-			Result:      result,
-			Base:        scope.Base,
-			ChangedOnly: scope.ChangedOnly,
-		})
-	}
-
-	stdout := newDisplay(cmd.OutOrStdout(), settings)
-	options := pretty.Options{
-		Theme:   stdout.theme,
-		Width:   stdout.caps.ContentWidth(),
-		Compact: opts.compact || opts.quiet || stdout.caps.Compact(),
-	}
-
-	if stdout.caps.Hyperlinks {
-		options.Link = fileLink
-	}
-
-	return pretty.Write(stdout.out, pretty.Input{
-		ToolVersion: currentBuildInfo().Version,
-		Dialect:     dialect.Name(),
-		DBVersion:   dbVersion,
-		Migrations:  migrations,
-		Result:      result,
-		FailOn:      opts.failOn,
-		Elapsed:     elapsed,
-		Highlight:   dialect.Highlight,
-		Base:        scope.Base,
-		ChangedOnly: scope.ChangedOnly,
-	}, options)
 }
 
 func ruleMetas() []ir.RuleMeta {
