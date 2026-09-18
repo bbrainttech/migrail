@@ -1,20 +1,5 @@
 [90mmigrail [m[34m0.1.0[m[90m · postgres 16 · 3 files[m
 
-[34m▌[m [1mdb/migrations/0001_index.sql[m
-
-  [33m▲[m [1;33mwarning[m [1mMR403[m No lock_timeout before locking DDL
-
-     [90m╭─[m db/migrations/0001_index.sql:1:1
-[90m   1[m [90m│[m [35mCREATE[m [35mINDEX[m [35mCONCURRENTLY[m idx_orders_status [35mON[m orders (status);
-     [90m│[m [33m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[m
-     [90m│[m
-     [90m├─[m [90mwhy     [mIf a long query holds a lock on orders, this statement waits for it, and every query
-     [90m│[m          that arrives afterwards queues behind this statement.
-     [90m╰─[m [32mfix     [mSet a lock timeout at the top of the migration, and retry the migration if it times
-                out:
-
-                [35mSET[m lock_timeout = [32m'5s'[m;
-
 [34m▌[m [1mdb/migrations/0002_fk.sql[m
 
   [33m▲[m [1;33mwarning[m [1mMR403[m No lock_timeout before locking DDL
@@ -31,4 +16,4 @@
                 [35mSET[m lock_timeout = [32m'5s'[m;
 
 [90m────────────────────────────────────────────────────────────────────────────────────────────────────[m
-  [90m✖ 0 errors[m  [33m▲ 2 warnings[m  [90m● 0 notices[m                                    [90m3 files · 4 stmts · 118ms[m
+  [90m✖ 0 errors[m  [33m▲ 1 warning[m  [90m● 0 notices[m                                     [90m3 files · 4 stmts · 118ms[m

@@ -72,7 +72,7 @@ func lockedTable(c *analyze.Context, stmt *pg_query.Node) (ir.ObjectRef, bool) {
 	switch {
 	case stmt.GetAlterTableStmt() != nil && stmt.GetAlterTableStmt().GetObjtype() == pg_query.ObjectType_OBJECT_TABLE:
 		tables = []ir.ObjectRef{pg.RelationRef(stmt.GetAlterTableStmt().GetRelation())}
-	case stmt.GetIndexStmt() != nil:
+	case stmt.GetIndexStmt() != nil && !stmt.GetIndexStmt().GetConcurrent():
 		tables = []ir.ObjectRef{pg.RelationRef(stmt.GetIndexStmt().GetRelation())}
 	case stmt.GetRenameStmt().GetRelation() != nil:
 		tables = []ir.ObjectRef{pg.RelationRef(stmt.GetRenameStmt().GetRelation())}

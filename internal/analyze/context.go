@@ -95,6 +95,7 @@ type schemaState struct {
 	newIndexes          map[string]struct{}
 	notNullChecks       map[string]notNullCheck
 	notValidConstraints map[string]int
+	settings            map[string]settingValue
 }
 
 func newTracker() *tracker {
@@ -159,6 +160,7 @@ func (t *tracker) apply(migration *ir.Migration, stmt *ir.Statement) {
 			newIndexes:          maps.Clone(t.newIndexes),
 			notNullChecks:       maps.Clone(t.notNullChecks),
 			notValidConstraints: maps.Clone(t.notValidConstraints),
+			settings:            maps.Clone(t.settings),
 		}
 	case ir.StmtCommit:
 		t.endTransaction()
@@ -168,12 +170,21 @@ func (t *tracker) apply(migration *ir.Migration, stmt *ir.Statement) {
 			t.newIndexes = t.savepoint.newIndexes
 			t.notNullChecks = t.savepoint.notNullChecks
 			t.notValidConstraints = t.savepoint.notValidConstraints
+			t.settings = t.savepoint.settings
 		}
 
 		t.endTransaction()
 	case ir.StmtSet:
+		if stmt.Setting.Local && !t.inTransaction(migration) {
+			break
+		}
+
 		t.settings[stmt.Setting.Name] = settingValue{value: stmt.Setting.Value, local: stmt.Setting.Local}
 	case ir.StmtReset:
+		if stmt.Setting.Local && !t.inTransaction(migration) {
+			break
+		}
+
 		delete(t.settings, stmt.Setting.Name)
 	default:
 	}
