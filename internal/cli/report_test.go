@@ -140,3 +140,13 @@ func TestCheckInGitHubActions(t *testing.T) {
 		t.Errorf("job summary should hold one report per run (2), got %d:\n%s", got, data)
 	}
 }
+
+func TestPrettySummaryCountsOneStatement(t *testing.T) {
+	t.Parallel()
+
+	run := runCLI(t, "", "check", "--db-version", "16", "--color", "never", mr101Basic)
+
+	if !strings.Contains(run.stdout, "1 file · 1 stmt ·") {
+		t.Errorf("summary should say \"1 stmt\", got %q", run.stdout)
+	}
+}

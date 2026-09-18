@@ -78,9 +78,10 @@ func (r renderer) summary() []string {
 
 	files := len(r.in.Migrations)
 	left := "  " + strings.Join(parts, "  ")
-	right := t.Muted.Render(fmt.Sprintf("%d %s %s %d stmts %s %s",
+	statements := r.in.Result.Statements
+	right := t.Muted.Render(fmt.Sprintf("%d %s %s %d %s %s %s",
 		files, components.Plural(files, "file", "files"), t.Symbols.Dot,
-		r.in.Result.Statements, t.Symbols.Dot, formatDuration(r.in.Elapsed)))
+		statements, components.Plural(statements, "stmt", "stmts"), t.Symbols.Dot, formatDuration(r.in.Elapsed)))
 
 	lines := []string{t.Subtle.Render(strings.Repeat(t.Symbols.Rule, r.opts.Width))}
 
