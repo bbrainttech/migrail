@@ -214,7 +214,25 @@ func ParseMigration(migration *ir.Migration, parse Parser) error {
 
 	migration.Statements = statements
 
+	if migration.TxMode == ir.TxModeByStatements {
+		migration.TxMode = txModeFromStatements(statements)
+	}
+
 	return nil
+}
+
+func txModeFromStatements(statements []*ir.Statement) ir.TxMode {
+	if len(statements) == 0 {
+		return ir.TxModeTransactional
+	}
+
+	for _, stmt := range statements {
+		if !stmt.NoTx {
+			return ir.TxModeTransactional
+		}
+	}
+
+	return ir.TxModeNonTransactional
 }
 
 func Read(root string, adapter adapters.Adapter, file adapters.File) (*ir.Migration, error) {

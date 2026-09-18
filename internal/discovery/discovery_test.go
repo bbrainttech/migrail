@@ -44,6 +44,7 @@ func TestDiscoverAndLoadProjects(t *testing.T) {
 		{project: "flyway", framework: "flyway", dir: "sql", want: []wantMigration{
 			{path: "sql/V1__init.sql", txMode: ir.TxModeTransactional, kinds: "create_table"},
 			{path: "sql/V1_2__add_email.sql", txMode: ir.TxModeTransactional, kinds: "alter_table"},
+			{path: "sql/V1_3__email_index.sql", txMode: ir.TxModeNonTransactional, kinds: "create_index"},
 			{path: "sql/V1_10__later.sql", txMode: ir.TxModeTransactional, kinds: "alter_table"},
 			{path: "sql/R__views.sql", txMode: ir.TxModeTransactional, kinds: "unknown"},
 		}},

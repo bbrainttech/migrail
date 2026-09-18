@@ -38,5 +38,5 @@ func (Adapter) Files(dir adapters.Dir) ([]adapters.File, error) {
 }
 
 func (Adapter) Extract(source string) adapters.Extraction {
-	return adapters.Extraction{SQL: source, TxMode: ir.TxModeTransactional}
+	return adapters.Extraction{SQL: source, TxMode: ir.TxModeByStatements}
 }

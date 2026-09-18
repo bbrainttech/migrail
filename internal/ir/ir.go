@@ -19,6 +19,7 @@ const (
 	TxModeUnknown          TxMode = "unknown"
 	TxModeTransactional    TxMode = "transactional"
 	TxModeNonTransactional TxMode = "non_transactional"
+	TxModeByStatements     TxMode = "by_statements"
 )
 
 type Origin string
@@ -82,6 +83,7 @@ type Statement struct {
 	Span       Span
 	SourceMap  *SourceLoc
 	InTx       bool
+	NoTx       bool
 	ParseError *ParseError
 }
 

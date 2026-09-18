@@ -9,6 +9,8 @@ import (
 )
 
 func classify(stmt *ir.Statement, node *pg_query.Node) {
+	stmt.NoTx = runsOnlyOutsideTransaction(node)
+
 	switch {
 	case node.GetTransactionStmt() != nil:
 		stmt.Kind = transactionKind(node.GetTransactionStmt().GetKind())
@@ -29,6 +31,31 @@ func classify(stmt *ir.Statement, node *pg_query.Node) {
 	case node.GetDropStmt() != nil:
 		classifyDrop(stmt, node.GetDropStmt())
 	}
+}
+
+func runsOnlyOutsideTransaction(node *pg_query.Node) bool {
+	switch {
+	case node.GetIndexStmt().GetConcurrent(), node.GetDropStmt().GetConcurrent():
+		return true
+	case node.GetReindexStmt() != nil:
+		return hasDefElem(node.GetReindexStmt().GetParams(), "concurrently")
+	case node.GetVacuumStmt() != nil:
+		return node.GetVacuumStmt().GetIsVacuumcmd()
+	default:
+		return node.GetCreatedbStmt() != nil || node.GetDropdbStmt() != nil ||
+			node.GetCreateTableSpaceStmt() != nil || node.GetDropTableSpaceStmt() != nil ||
+			node.GetAlterSystemStmt() != nil
+	}
+}
+
+func hasDefElem(options []*pg_query.Node, name string) bool {
+	for _, option := range options {
+		if option.GetDefElem().GetDefname() == name {
+			return true
+		}
+	}
+
+	return false
 }
 
 func transactionKind(kind pg_query.TransactionStmtKind) ir.StmtKind {

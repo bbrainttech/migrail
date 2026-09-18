@@ -332,7 +332,7 @@ type Migration struct {
     Framework   string       // "goose", "django", …
     SourcePath  string       // file the user edits
     Direction   Direction    // Up | Down
-    TxMode      TxMode       // Transactional | NonTransactional | Unknown
+    TxMode      TxMode       // Transactional | NonTransactional | Unknown | ByStatements (resolved after parsing)
     Statements  []*Statement
     ChangeState ChangeState  // New | Modified | Unchanged (vs git base)
     Origin      Origin       // RawSQL | FrameworkCLI | Capture
@@ -631,7 +631,7 @@ If strategy 2 needs a runtime that isn't available (e.g. no Python venv), migrai
 | goose (SQL) | static | `-- +goose Up` section; honors `StatementBegin/End` | tx unless `-- +goose NO TRANSACTION` | exact line |
 | goose (Go funcs) | capture | – | from `AddMigrationNoTx` | file |
 | Atlas dir | static | `.sql` files | `-- atlas:txmode none` directives | exact line |
-| Flyway SQL | static | `V*__*.sql` | tx by default; per-script; `executeInTransaction` config | exact line |
+| Flyway SQL | static | `V*__*.sql` | tx by default; non-tx when every statement must run outside a transaction (Flyway's Postgres auto-detection, `mixed=false`); per-script `executeInTransaction` config | exact line |
 | Flyway Java | capture | – | – | file |
 | Prisma | static | `migrations/*/migration.sql` | no implicit wrapping (per Prisma behavior; verify per version) | exact line |
 | Drizzle | static | `drizzle/*.sql`, split on `--> statement-breakpoint` | – | exact line |
