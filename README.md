@@ -60,13 +60,13 @@ migrail is built around four commitments:
 ## Supported stacks
 
 | Database | Status |
-|---|---|
+| --- | --- |
 | PostgreSQL 12–18 | Available |
 | MySQL, MariaDB | Planned for v2 |
 | SQL Server, SQLite, CockroachDB | Planned for v3 |
 
 | Migration tool | Status |
-|---|---|
+| --- | --- |
 | golang-migrate, goose, Atlas, Flyway, Prisma, Drizzle, dbmate, sqitch, plain `.sql` directories | Available |
 | Django, Alembic, Rails, Laravel, EF Core, Knex, TypeORM, Sequelize, Liquibase | Planned for v0.2 |
 | Any other tool, through capture mode | Planned for v0.2 |
@@ -136,7 +136,7 @@ migrail rules
 ```
 
 | `check` flag | Meaning |
-|---|---|
+| --- | --- |
 | `--db-version` | PostgreSQL major version you run in production, 12 to 18. Defaults to 12. |
 | `--fail-on` | Exit with code 1 on findings at or above `error` (default), `warning` or `notice`. `never` always exits 0. |
 | `-r`, `--rule` | Only run these rules, by ID or slug. |
@@ -152,7 +152,7 @@ migrail rules
 | `--ci` | No color, links or spinners unless `FORCE_COLOR` or `CLICOLOR_FORCE` is set. `CI=true` turns this on. |
 
 | Global flag | Meaning |
-|---|---|
+| --- | --- |
 | `--color` | `auto` (default), `always` or `never`. `NO_COLOR` is respected. |
 | `--theme` | `auto` (default), `dark`, `light` or `mono`. |
 | `--ascii` | ASCII symbols instead of Unicode. |
@@ -221,7 +221,7 @@ CREATE INDEX idx_orders_status ON orders (status);
 ### Available rules
 
 | ID | Rule | Severity |
-|---|---|---|
+| --- | --- | --- |
 | MR101 | `create-index-non-concurrent`: `CREATE INDEX` without `CONCURRENTLY` blocks writes | error |
 | MR102 | `drop-index-non-concurrent`: `DROP INDEX` without `CONCURRENTLY` blocks all queries | warning |
 | MR104 | `add-foreign-key-validating`: a foreign key without `NOT VALID` blocks writes on both tables | error |
