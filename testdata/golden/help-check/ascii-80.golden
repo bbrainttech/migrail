@@ -18,6 +18,8 @@
         --ci                  CI mode: no color, links or spinners
                               unless forced
         --compact             print one line per finding
+        --db url              read-only database url for table sizes and
+                              time estimates (or MIGRAIL_DATABASE_URL)
         --db-version string   PostgreSQL major version in production,
                               such as 16 (default: 12)
     -d, --dir string          project root to search for migrations

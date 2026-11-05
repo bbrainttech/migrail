@@ -783,7 +783,7 @@ Rolling deploys run **old code** while the migration runs. So:
 **Opt-in only:** `--db <url>` or `MIGRAIL_DATABASE_URL`, or `db.url_env` in config (never store URLs in config).
 
 ### Safety
-- Connection opened with `default_transaction_read_only=on`, `statement_timeout=5s`, `application_name=migrail`.
+- Implemented 2026-11-05 (`internal/livedb`): every query runs inside one `BEGIN READ ONLY` transaction with `SET LOCAL statement_timeout = '5s'` and `lock_timeout = '1s'`, using the simple protocol, instead of the `default_transaction_read_only` startup parameter, because PgBouncer rejects unknown startup parameters. `application_name=migrail` stays. The session opens only when there are migrations to check. If it can't connect, migrail prints a notice and finishes the check without estimates, so a staging outage never turns into a failed build.
 - Only catalog/stat queries. Never touches user tables' data.
 - Credentials never logged or printed (URL redacted in all output, including `--debug`).
 
@@ -802,7 +802,8 @@ Rolling deploys run **old code** while the migration runs. So:
 - Severity adjustment thresholds (configurable):
   - `< 10k rows` and `< 10 MB`: downgrade one level ("table is small").
   - `> 10M rows` or `> 10 GB`: upgrade warning → error.
-- Missing objects in live DB (e.g. table created by an earlier unapplied migration) → treated as new.
+- Missing objects in live DB keep their finding with a note instead of being treated as new (changed 2026-11-05). Treating them as new would hide every finding when someone connects to the wrong database, which breaks "never report safe when unsure".
+- Implemented 2026-11-05: estimates apply to findings with a `lock`, sized from the largest locked table. Throughput ranges live in `internal/livedb/impact.go` per class (rewrite, scan, index build); rows use `reltuples`, falling back to `n_live_tup` only for tables that were never analyzed, because `n_live_tup` can overcount right after a load (a test table of 300,000 rows reported 600,000), and partitioned tables sum their partitions with `pg_partition_tree`. Severity moves only for scan and rewrite findings, because other lock durations don't grow with table size, and config severity overrides still win. Write rates aren't sampled yet.
 
 ---
 

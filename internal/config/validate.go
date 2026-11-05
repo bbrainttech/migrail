@@ -48,6 +48,10 @@ func validate(cfg Config, path string, data []byte) error {
 		}
 	}
 
+	if cfg.Thresholds.SmallTableRows < 0 || cfg.Thresholds.LargeTableRows < 0 {
+		return errorAt(path, data, "$.thresholds", "thresholds can't be negative", nil)
+	}
+
 	if cfg.DB.Version != "" {
 		major, err := strconv.Atoi(strings.SplitN(cfg.DB.Version, ".", 2)[0])
 		if err != nil || major < 12 || major > 18 {

@@ -92,14 +92,15 @@ const (
 )
 
 type Entry struct {
-	Mode    Mode
-	Rewrite bool
-	Scan    bool
+	Mode        Mode
+	Rewrite     bool
+	Scan        bool
+	BuildsIndex bool
 }
 
 var entries = map[Operation]Entry{
-	CreateIndex:             {Mode: Share, Scan: true},
-	CreateIndexConcurrently: {Mode: ShareUpdateExclusive, Scan: true},
+	CreateIndex:             {Mode: Share, Scan: true, BuildsIndex: true},
+	CreateIndexConcurrently: {Mode: ShareUpdateExclusive, Scan: true, BuildsIndex: true},
 	AddForeignKey:           {Mode: ShareRowExclusive, Scan: true},
 	ValidateConstraint:      {Mode: ShareUpdateExclusive, Scan: true},
 	SetNotNull:              {Mode: AccessExclusive, Scan: true},
@@ -107,7 +108,7 @@ var entries = map[Operation]Entry{
 	RenameColumn:            {Mode: AccessExclusive},
 	DropIndex:               {Mode: AccessExclusive},
 	AddCheck:                {Mode: AccessExclusive, Scan: true},
-	AddUnique:               {Mode: AccessExclusive, Scan: true},
+	AddUnique:               {Mode: AccessExclusive, Scan: true, BuildsIndex: true},
 	AddColumn:               {Mode: AccessExclusive},
 	AddColumnRewrite:        {Mode: AccessExclusive, Rewrite: true},
 	DropColumn:              {Mode: AccessExclusive},
@@ -136,10 +137,11 @@ func Impact(op Operation, tables ...ir.ObjectRef) *ir.LockImpact {
 	}
 
 	return &ir.LockImpact{
-		Mode:    string(entry.Mode),
-		Tables:  names,
-		Blocks:  entry.Mode.BlockedStatements(),
-		Rewrite: entry.Rewrite,
-		Scan:    entry.Scan,
+		Mode:        string(entry.Mode),
+		Tables:      names,
+		Blocks:      entry.Mode.BlockedStatements(),
+		Rewrite:     entry.Rewrite,
+		Scan:        entry.Scan,
+		BuildsIndex: entry.BuildsIndex,
 	}
 }

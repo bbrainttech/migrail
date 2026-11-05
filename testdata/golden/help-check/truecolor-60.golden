@@ -26,6 +26,10 @@
   [38;2;230;230;234m                            links or spinners[m
   [38;2;230;230;234m                            unless forced[m
         [1;38;2;230;230;234m--compact[m             [38;2;230;230;234mprint one line per finding[m
+        [1;38;2;230;230;234m--db url[m              [38;2;230;230;234mread-only database url[m
+  [38;2;230;230;234m                            for table sizes and[m
+  [38;2;230;230;234m                            time estimates (or[m
+  [38;2;230;230;234m                            MIGRAIL_DATABASE_URL)[m
         [1;38;2;230;230;234m--db-version string[m   [38;2;230;230;234mPostgreSQL major[m
   [38;2;230;230;234m                            version in production,[m
   [38;2;230;230;234m                            such as 16 (default: 12)[m

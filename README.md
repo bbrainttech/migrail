@@ -195,6 +195,20 @@ git add .migrail-baseline.json
 
 Run it again after you fix old findings. To see everything, pass `--no-baseline`.
 
+Get real numbers from a staging database. Point migrail at a read-only URL and it adds the table's size and an estimate of how long the lock lasts. Findings on small tables drop one level, and warnings on very large tables become errors:
+
+```
+export MIGRAIL_DATABASE_URL=postgres://readonly@staging.internal/app
+migrail check
+```
+
+```
+├─ lock    SHARE on orders · blocks INSERT, UPDATE, DELETE
+├─ impact  41.2M rows · 18.4 GB · est. 4–22 min of blocked writes  (live)
+```
+
+migrail only reads catalog statistics, in a read-only transaction. It never reads your tables' rows. Estimates are rough ranges, so treat them as an order of magnitude.
+
 Get machine-readable output:
 
 ```
@@ -213,6 +227,7 @@ migrail check -f json > report.json
 | `-o`, `--output` | Also write a report to a file. The format comes from the extension (`.sarif`, `.json`, `.md`, `.xml` for JUnit, `.txt`) or a prefix, such as `junit=report.xml` or `gitlab=gl-code-quality-report.json`. Repeatable. |
 | `-r`, `--rule` | Only run these rules, by ID or name. |
 | `--skip-rule` | Skip these rules, by ID or name. |
+| `--db` | Read-only database URL for table sizes and time estimates. `MIGRAIL_DATABASE_URL` works too, and is safer because the URL stays out of your shell history. |
 | `--baseline` | Baseline file to use. Defaults to `.migrail-baseline.json` at the project root. |
 | `--no-baseline` | Report findings even if they're recorded in a baseline. |
 | `-d`, `--dir` | Project root to search. Defaults to the repository root. |
@@ -255,6 +270,10 @@ Flags override the config file. `migrail schema config` prints the JSON schema f
 version: 1
 db:
   version: "16"
+  url_env: STAGING_DATABASE_URL  # variable that holds a read-only URL, never the URL itself
+thresholds:
+  small_table_rows: 10000     # below this, and under 10 MB, lock findings drop one level
+  large_table_rows: 10000000  # above this, or over 10 GB, lock warnings become errors
 projects:                     # omit to detect projects automatically
   - path: services/api
     framework: goose

@@ -62,6 +62,7 @@ type checkOptions struct {
 
 	baselinePath string
 	noBaseline   bool
+	databaseURL  string
 }
 
 func newCheckCommand(ui *uiFlags) *cobra.Command {
@@ -95,6 +96,7 @@ func newCheckCommand(ui *uiFlags) *cobra.Command {
 	flags.BoolVar(&opts.ci, "ci", false, "CI mode: no color, links or spinners unless forced")
 	flags.StringVar(&opts.baselinePath, "baseline", "", "baseline `file` to use (default: "+baseline.FileName+" at the project root)")
 	flags.BoolVar(&opts.noBaseline, "no-baseline", false, "report findings even if they're recorded in a baseline")
+	flags.StringVar(&opts.databaseURL, "db", "", "read-only database `url` for table sizes and time estimates (or "+databaseURLEnv+")")
 
 	return cmd
 }
@@ -157,7 +159,14 @@ func analyzeProject(
 
 	finish.Done("Discovered", fmt.Sprintf("%d %s", len(migrations), components.Plural(len(migrations), "migration", "migrations")))
 
-	if opts.dbVersion == "" && !opts.quiet {
+	session := openLiveSession(ctx, opts, phases, stderr, len(migrations))
+	if session != nil {
+		defer session.Close(ctx)
+
+		dbVersion = liveVersion(session, dbVersion, opts, stderr)
+	}
+
+	if opts.dbVersion == "" && session == nil && !opts.quiet {
 		writeNotice(stderr, fmt.Sprintf("assuming PostgreSQL %s. Set --db-version for advice that matches your version.", dbVersion))
 	}
 
@@ -176,6 +185,12 @@ func analyzeProject(
 		}
 
 		return checkReport{}, internalError(err)
+	}
+
+	if err := annotateImpact(ctx, session, result.Findings, opts, stderr); err != nil {
+		finish.Abort()
+
+		return checkReport{}, err
 	}
 
 	result, err = applySuppressions(result, migrations, dialect, dbVersion, opts)

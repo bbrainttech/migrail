@@ -78,6 +78,7 @@ type Finding struct {
 	Label       string
 	Note        string
 	Lock        *LockImpact
+	Impact      *Impact
 	Evidence    []Evidence
 	Fix         *Fix
 	Location    SourceLoc
@@ -94,11 +95,12 @@ type Suppression struct {
 }
 
 type LockImpact struct {
-	Mode    string
-	Tables  []string
-	Blocks  []string
-	Rewrite bool
-	Scan    bool
+	Mode        string
+	Tables      []string
+	Blocks      []string
+	Rewrite     bool
+	Scan        bool
+	BuildsIndex bool
 }
 
 func (l LockImpact) BlockedText() string {
