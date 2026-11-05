@@ -14,6 +14,7 @@
     migrail <command> [flags]
 
   Commands
+    baseline    Record today's findings so only new ones are reported
     check       Check SQL migrations for locks, rewrites and breaking changes
     explain     Explain what a rule detects and how to fix it
     rules       List every rule with its severity and category

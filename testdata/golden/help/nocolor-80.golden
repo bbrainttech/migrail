@@ -16,6 +16,7 @@
     migrail <command> [flags]
 
   [1mCommands[m
+    [1mbaseline    [mRecord today's findings so only new ones are reported
     [1mcheck       [mCheck SQL migrations for locks, rewrites and breaking changes
     [1mexplain     [mExplain what a rule detects and how to fix it
     [1mrules       [mList every rule with its severity and category

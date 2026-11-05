@@ -898,6 +898,7 @@ CREATE INDEX idx_orders_status ON orders (status);
 - `migrail baseline` writes `.migrail-baseline.json` with finding fingerprints from `--all`.
 - Subsequent runs hide baselined findings. Useful when enabling `--all` on legacy repos.
 - Fingerprint = hash(rule ID + migration ID + normalized statement), stable across whitespace/comment edits.
+- Implemented 2026-11-05 (`internal/baseline`): a project's `.migrail-baseline.json` applies automatically, `--baseline <file>` picks another one and fails if it's missing, `--no-baseline` turns it off. Entries are sorted by path, rule and fingerprint so regenerating gives a small diff. Baselined findings stay in JSON and SARIF as suppressed with source `baseline`, and count as ignored in the summary. Migration IDs are now relative to the project root instead of the working directory, so fingerprints match from any folder.
 
 ---
 
@@ -914,7 +915,7 @@ CREATE INDEX idx_orders_status ON orders (status);
 | `migrail init` | interactive setup wizard (§19.8) |
 | `migrail doctor` | environment diagnostics: git, docker, runtimes, config validity, DB connectivity |
 | `migrail capture -- <cmd>` | run capture mode (§13) and analyze |
-| `migrail baseline` | create/update baseline |
+| `migrail baseline [paths…]` | create or replace the baseline from every migration; `-o` picks the file |
 | `migrail version` | version, commit, build date, parser version, supported dialects |
 | `migrail completion <shell>` | bash, zsh, fish, powershell |
 | `migrail schema <config\|report>` | print JSON schemas |

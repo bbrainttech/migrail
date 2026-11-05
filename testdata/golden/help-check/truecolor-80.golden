@@ -13,6 +13,8 @@
   [38;2;230;230;234m                            changed since the base branch[m
         [1;38;2;230;230;234m--base string[m         [38;2;230;230;234mgit branch or commit to compare against[m
   [38;2;230;230;234m                            (default: origin/HEAD, main or master)[m
+        [1;38;2;230;230;234m--baseline file[m       [38;2;230;230;234mbaseline file to use (default:[m
+  [38;2;230;230;234m                            .migrail-baseline.json at the project root)[m
         [1;38;2;230;230;234m--ci[m                  [38;2;230;230;234mCI mode: no color, links or spinners[m
   [38;2;230;230;234m                            unless forced[m
         [1;38;2;230;230;234m--compact[m             [38;2;230;230;234mprint one line per finding[m
@@ -28,6 +30,8 @@
         [1;38;2;230;230;234m--framework string[m    [38;2;230;230;234mmigration tool to use instead of detecting[m
   [38;2;230;230;234m                            it: sqitch, atlas, prisma, drizzle, goose,[m
   [38;2;230;230;234m                            dbmate, golang-migrate, flyway, sql[m
+        [1;38;2;230;230;234m--no-baseline[m         [38;2;230;230;234mreport findings even if they're recorded[m
+  [38;2;230;230;234m                            in a baseline[m
     [1;38;2;230;230;234m-o, --output file[m         [38;2;230;230;234malso write a report to a file, such as[m
   [38;2;230;230;234m                            migrail.sarif or junit=report.xml (repeatable)[m
     [1;38;2;230;230;234m-q, --quiet[m               [38;2;230;230;234mprint only findings and the summary[m

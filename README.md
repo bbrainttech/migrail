@@ -163,6 +163,15 @@ CREATE INDEX idx_orders_status ON orders (status);
 
 `migrail:ignore` applies to the next statement, and `migrail:ignore-file` to the whole file. Without a reason, the finding is still reported.
 
+Adopt migrail in a repository that already has old migrations. `baseline` checks every migration and records what it finds, so `migrail check --all` reports only new findings from then on:
+
+```
+migrail baseline
+git add .migrail-baseline.json
+```
+
+Run it again after you fix old findings. To see everything, pass `--no-baseline`.
+
 Get machine-readable output:
 
 ```
@@ -181,6 +190,8 @@ migrail check -f json > report.json
 | `-o`, `--output` | Also write a report to a file. The format comes from the extension (`.sarif`, `.json`, `.md`, `.xml` for JUnit, `.txt`) or a prefix, such as `junit=report.xml`. Repeatable. |
 | `-r`, `--rule` | Only run these rules, by ID or name. |
 | `--skip-rule` | Skip these rules, by ID or name. |
+| `--baseline` | Baseline file to use. Defaults to `.migrail-baseline.json` at the project root. |
+| `--no-baseline` | Report findings even if they're recorded in a baseline. |
 | `-d`, `--dir` | Project root to search. Defaults to the repository root. |
 | `--framework` | Use this migration tool instead of detecting it. |
 | `--compact` | One line per finding. |

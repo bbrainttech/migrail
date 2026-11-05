@@ -18,6 +18,10 @@
                               to compare against
                               (default: origin/HEAD,
                               main or master)
+        [1m--baseline file[m       baseline file to use
+                              (default:
+                              .migrail-baseline.json
+                              at the project root)
         [1m--ci[m                  CI mode: no color,
                               links or spinners
                               unless forced
@@ -43,6 +47,9 @@
                               prisma, drizzle,
                               goose, dbmate,
                               golang-migrate, flyway, sql
+        [1m--no-baseline[m         report findings even
+                              if they're recorded in
+                              a baseline
     [1m-o, --output file[m         also write a report to
                               a file, such as
                               migrail.sarif or
