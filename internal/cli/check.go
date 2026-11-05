@@ -33,10 +33,11 @@ const (
 	formatGitHub   = "github"
 	formatMarkdown = "markdown"
 	formatJUnit    = "junit"
+	formatGitLab   = "gitlab"
 	failOnNever    = "never"
 )
 
-var formats = []string{formatPretty, formatJSON, formatSARIF, formatGitHub, formatMarkdown, formatJUnit}
+var formats = []string{formatPretty, formatJSON, formatSARIF, formatGitHub, formatGitLab, formatMarkdown, formatJUnit}
 
 var failOnLevels = []string{string(ir.SeverityError), string(ir.SeverityWarning), string(ir.SeverityNotice), failOnNever}
 
@@ -78,7 +79,7 @@ func newCheckCommand(ui *uiFlags) *cobra.Command {
 	}
 
 	flags := cmd.Flags()
-	flags.StringVarP(&opts.format, "format", "f", formatPretty, "output format: pretty, json, sarif, github, markdown or junit")
+	flags.StringVarP(&opts.format, "format", "f", formatPretty, "output format: pretty, json, sarif, github, gitlab, markdown or junit")
 	flags.StringVar(&opts.dbVersion, "db-version", "", "PostgreSQL major version in production, such as 16 (default: 12)")
 	flags.StringVar(&opts.failOn, "fail-on", string(ir.SeverityError), "exit with code 1 on findings at or above: error, warning, notice or never")
 	flags.StringSliceVarP(&opts.rules, "rule", "r", nil, "only run these rules, by ID or slug")

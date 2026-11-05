@@ -20,8 +20,8 @@
                               root)
         --fail-on string      exit with code 1 on findings at or above: error, warning,
                               notice or never (default "error")
-    -f, --format string       output format: pretty, json, sarif, github, markdown or junit
-                              (default "pretty")
+    -f, --format string       output format: pretty, json, sarif, github, gitlab, markdown
+                              or junit (default "pretty")
         --framework string    migration tool to use instead of detecting it: sqitch, atlas,
                               prisma, drizzle, goose, dbmate, golang-migrate, flyway, sql
         --no-baseline         report findings even if they're recorded in a baseline

@@ -1,0 +1,7 @@
+- id: migrail
+  name: migrail
+  description: Check database migrations for locks, table rewrites and breaking changes.
+  entry: migrail check
+  language: system
+  pass_filenames: false
+  stages: [pre-commit, pre-push]

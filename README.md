@@ -99,7 +99,30 @@ jobs:
 | `working-directory` | `.` | Directory to run in. |
 | `version` | the action's tag | migrail release to install. |
 
-On other CI systems, install migrail and run `migrail check`. Write reports for your CI with `-o`, for example a JUnit report for GitLab or Jenkins:
+For GitLab, include the template. It runs on merge requests and adds findings to the Code Quality widget and test report:
+
+```yaml
+# .gitlab-ci.yml
+include:
+  - remote: https://raw.githubusercontent.com/bbrainttech/migrail/main/integrations/gitlab/migrail.gitlab-ci.yml
+
+migrail:
+  variables:
+    MIGRAIL_ARGS: --db-version 16
+```
+
+For [pre-commit](https://pre-commit.com), install migrail and add the hook:
+
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/bbrainttech/migrail
+    rev: main
+    hooks:
+      - id: migrail
+```
+
+On other CI systems, install migrail and run `migrail check`. Write reports for your CI with `-o`, for example a JUnit report for Jenkins:
 
 ```
 migrail check -o junit=reports/migrail.xml
@@ -186,8 +209,8 @@ migrail check -f json > report.json
 | `--all` | Check every migration, not only the ones changed since the base branch. |
 | `--base` | Branch or commit to compare against. Defaults to `origin/HEAD`, then `main` or `master`. |
 | `--fail-on` | Exit with code 1 on findings at or above `error` (default), `warning` or `notice`. `never` always exits 0. |
-| `-f`, `--format` | Output format: `pretty` (default), `json`, `sarif`, `github`, `markdown` or `junit`. |
-| `-o`, `--output` | Also write a report to a file. The format comes from the extension (`.sarif`, `.json`, `.md`, `.xml` for JUnit, `.txt`) or a prefix, such as `junit=report.xml`. Repeatable. |
+| `-f`, `--format` | Output format: `pretty` (default), `json`, `sarif`, `github`, `gitlab`, `markdown` or `junit`. |
+| `-o`, `--output` | Also write a report to a file. The format comes from the extension (`.sarif`, `.json`, `.md`, `.xml` for JUnit, `.txt`) or a prefix, such as `junit=report.xml` or `gitlab=gl-code-quality-report.json`. Repeatable. |
 | `-r`, `--rule` | Only run these rules, by ID or name. |
 | `--skip-rule` | Skip these rules, by ID or name. |
 | `--baseline` | Baseline file to use. Defaults to `.migrail-baseline.json` at the project root. |
@@ -249,7 +272,7 @@ ignore:
     path: "legacy/**"
     reason: legacy tables are dropped on purpose
 output:
-  format: pretty              # pretty, json, sarif, github, markdown or junit
+  format: pretty              # pretty, json, sarif, github, gitlab, markdown or junit
   theme: auto
 ```
 

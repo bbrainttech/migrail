@@ -26,7 +26,8 @@
                               error, warning, notice or never (default
                               "error")
     -f, --format string       output format: pretty, json, sarif,
-                              github, markdown or junit (default "pretty")
+                              github, gitlab, markdown or junit (default
+                              "pretty")
         --framework string    migration tool to use instead of detecting
                               it: sqitch, atlas, prisma, drizzle, goose,
                               dbmate, golang-migrate, flyway, sql

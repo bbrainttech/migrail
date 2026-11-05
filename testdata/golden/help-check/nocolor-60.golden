@@ -39,8 +39,8 @@
                               or never (default "error")
     [1m-f, --format string[m       output format: pretty,
                               json, sarif, github,
-                              markdown or junit
-                              (default "pretty")
+                              gitlab, markdown or
+                              junit (default "pretty")
         [1m--framework string[m    migration tool to use
                               instead of detecting
                               it: sqitch, atlas,

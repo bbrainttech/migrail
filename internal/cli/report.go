@@ -15,6 +15,7 @@ import (
 	pg "github.com/bbrainttech/migrail/internal/dialect/postgres"
 	"github.com/bbrainttech/migrail/internal/ir"
 	"github.com/bbrainttech/migrail/internal/report/github"
+	"github.com/bbrainttech/migrail/internal/report/gitlab"
 	"github.com/bbrainttech/migrail/internal/report/jsonreport"
 	"github.com/bbrainttech/migrail/internal/report/junit"
 	"github.com/bbrainttech/migrail/internal/report/markdown"
@@ -178,6 +179,8 @@ func renderReport(w io.Writer, format string, report checkReport, settings term.
 		return sarif.Write(w, sarif.Input{ToolVersion: toolVersion, Rules: ruleMetas(), Result: report.result})
 	case formatGitHub:
 		return github.Write(w, github.Input{Result: report.result})
+	case formatGitLab:
+		return gitlab.Write(w, gitlab.Input{Result: report.result})
 	case formatMarkdown:
 		return markdown.Write(w, markdown.Input{
 			ToolVersion: toolVersion,

@@ -1297,7 +1297,9 @@ Decided 2026-09-18: the action lives at the root of this repository (`action.yml
 
 ### 20.3 Other integrations
 - **GitLab CI** template (`integrations/gitlab/migrail.gitlab-ci.yml`), code quality report.
+  - Implemented 2026-11-05: `-f gitlab` writes the Code Quality JSON (`internal/report/gitlab`). Ignored findings are left out. error maps to `critical`, warning to `major` and notice to `info`. Paths stay relative to the working directory, which is the repository root in GitLab CI. Repeated fingerprints get a `-2` style suffix because GitLab shows only one issue per fingerprint. The template installs the latest release on `alpine:3` and needs `GIT_DEPTH: 0` for change detection.
 - **pre-commit** hook (`.pre-commit-hooks.yaml`) + **lefthook**/**husky** snippets.
+  - Implemented 2026-11-05: `language: system`, so it runs an installed migrail instead of compiling cgo during the hook install. `pass_filenames: false` because `check` already finds the changed migrations.
 - **Bitbucket Pipelines**, **CircleCI orb**, **Azure Pipelines** snippets in docs.
 
 ---
