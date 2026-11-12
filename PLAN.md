@@ -783,7 +783,7 @@ Rolling deploys run **old code** while the migration runs. So:
 **Opt-in only:** `--db <url>` or `MIGRAIL_DATABASE_URL`, or `db.url_env` in config (never store URLs in config).
 
 ### Safety
-- Connection opened with `default_transaction_read_only=on`, `statement_timeout=5s`, `application_name=migrail`.
+- Implemented 2026-11-05 (`internal/livedb`): every query runs inside one `BEGIN READ ONLY` transaction with `SET LOCAL statement_timeout = '5s'` and `lock_timeout = '1s'`, using the simple protocol, instead of the `default_transaction_read_only` startup parameter, because PgBouncer rejects unknown startup parameters. `application_name=migrail` stays. The session opens only when there are migrations to check. If it can't connect, migrail prints a notice and finishes the check without estimates, so a staging outage never turns into a failed build.
 - Only catalog/stat queries. Never touches user tables' data.
 - Credentials never logged or printed (URL redacted in all output, including `--debug`).
 
@@ -802,7 +802,8 @@ Rolling deploys run **old code** while the migration runs. So:
 - Severity adjustment thresholds (configurable):
   - `< 10k rows` and `< 10 MB`: downgrade one level ("table is small").
   - `> 10M rows` or `> 10 GB`: upgrade warning → error.
-- Missing objects in live DB (e.g. table created by an earlier unapplied migration) → treated as new.
+- Missing objects in live DB keep their finding with a note instead of being treated as new (changed 2026-11-05). Treating them as new would hide every finding when someone connects to the wrong database, which breaks "never report safe when unsure".
+- Implemented 2026-11-05: estimates apply to findings with a `lock`, sized from the largest locked table. Throughput ranges live in `internal/livedb/impact.go` per class (rewrite, scan, index build); rows use `reltuples`, falling back to `n_live_tup` only for tables that were never analyzed, because `n_live_tup` can overcount right after a load (a test table of 300,000 rows reported 600,000), and partitioned tables sum their partitions with `pg_partition_tree`. Severity moves only for scan and rewrite findings, because other lock durations don't grow with table size, and config severity overrides still win. Write rates aren't sampled yet.
 
 ---
 
@@ -898,6 +899,7 @@ CREATE INDEX idx_orders_status ON orders (status);
 - `migrail baseline` writes `.migrail-baseline.json` with finding fingerprints from `--all`.
 - Subsequent runs hide baselined findings. Useful when enabling `--all` on legacy repos.
 - Fingerprint = hash(rule ID + migration ID + normalized statement), stable across whitespace/comment edits.
+- Implemented 2026-11-05 (`internal/baseline`): a project's `.migrail-baseline.json` applies automatically, `--baseline <file>` picks another one and fails if it's missing, `--no-baseline` turns it off. Entries are sorted by path, rule and fingerprint so regenerating gives a small diff. Baselined findings stay in JSON and SARIF as suppressed with source `baseline`, and count as ignored in the summary. Migration IDs are now relative to the project root instead of the working directory, so fingerprints match from any folder.
 
 ---
 
@@ -914,7 +916,7 @@ CREATE INDEX idx_orders_status ON orders (status);
 | `migrail init` | interactive setup wizard (§19.8) |
 | `migrail doctor` | environment diagnostics: git, docker, runtimes, config validity, DB connectivity |
 | `migrail capture -- <cmd>` | run capture mode (§13) and analyze |
-| `migrail baseline` | create/update baseline |
+| `migrail baseline [paths…]` | create or replace the baseline from every migration; `-o` picks the file |
 | `migrail version` | version, commit, build date, parser version, supported dialects |
 | `migrail completion <shell>` | bash, zsh, fish, powershell |
 | `migrail schema <config\|report>` | print JSON schemas |
@@ -1296,7 +1298,9 @@ Decided 2026-09-18: the action lives at the root of this repository (`action.yml
 
 ### 20.3 Other integrations
 - **GitLab CI** template (`integrations/gitlab/migrail.gitlab-ci.yml`), code quality report.
+  - Implemented 2026-11-05: `-f gitlab` writes the Code Quality JSON (`internal/report/gitlab`). Ignored findings are left out. error maps to `critical`, warning to `major` and notice to `info`. Paths stay relative to the working directory, which is the repository root in GitLab CI. Repeated fingerprints get a `-2` style suffix because GitLab shows only one issue per fingerprint. The template installs the latest release on `alpine:3` and needs `GIT_DEPTH: 0` for change detection.
 - **pre-commit** hook (`.pre-commit-hooks.yaml`) + **lefthook**/**husky** snippets.
+  - Implemented 2026-11-05: `language: system`, so it runs an installed migrail instead of compiling cgo during the hook install. `pass_filenames: false` because `check` already finds the changed migrations.
 - **Bitbucket Pipelines**, **CircleCI orb**, **Azure Pipelines** snippets in docs.
 
 ---
@@ -1389,7 +1393,7 @@ For each lock-model row (§10.1) and each Postgres version 12–18 (testcontaine
 5. Detect rewrite: compare `pg_class.relfilenode` before/after.
 6. Output `lockmodel.verified.json`, and CI **fails if the lock model table disagrees** with observed behavior.
 
-Runs nightly + on changes to `dialect/postgres/lockmodel`.
+Runs on changes to `dialect/postgres/lockmodel` and by hand from the Actions tab. The nightly run is off to save Actions minutes.
 
 ### 23.4 Framework integration tests
 `testdata/projects/` contains tiny real apps (Django, Rails, Laravel, Prisma, EF Core, Knex, TypeORM, Sequelize, Alembic, Spring+Flyway, Go+goose). CI job per framework (Docker images with runtimes) runs `migrail check` and compares against expected findings, including capture mode.

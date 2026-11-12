@@ -11,17 +11,22 @@
   [38;2;230;230;234m                            base branch[m
         [1;38;2;230;230;234m--base string[m         [38;2;230;230;234mgit branch or commit to compare against (default: origin/HEAD,[m
   [38;2;230;230;234m                            main or master)[m
+        [1;38;2;230;230;234m--baseline file[m       [38;2;230;230;234mbaseline file to use (default: .migrail-baseline.json at the[m
+  [38;2;230;230;234m                            project root)[m
         [1;38;2;230;230;234m--ci[m                  [38;2;230;230;234mCI mode: no color, links or spinners unless forced[m
         [1;38;2;230;230;234m--compact[m             [38;2;230;230;234mprint one line per finding[m
+        [1;38;2;230;230;234m--db url[m              [38;2;230;230;234mread-only database url for table sizes and time estimates (or[m
+  [38;2;230;230;234m                            MIGRAIL_DATABASE_URL)[m
         [1;38;2;230;230;234m--db-version string[m   [38;2;230;230;234mPostgreSQL major version in production, such as 16 (default: 12)[m
     [1;38;2;230;230;234m-d, --dir string[m          [38;2;230;230;234mproject root to search for migrations (default: the repository[m
   [38;2;230;230;234m                            root)[m
         [1;38;2;230;230;234m--fail-on string[m      [38;2;230;230;234mexit with code 1 on findings at or above: error, warning,[m
   [38;2;230;230;234m                            notice or never (default "error")[m
-    [1;38;2;230;230;234m-f, --format string[m       [38;2;230;230;234moutput format: pretty, json, sarif, github, markdown or junit[m
-  [38;2;230;230;234m                            (default "pretty")[m
+    [1;38;2;230;230;234m-f, --format string[m       [38;2;230;230;234moutput format: pretty, json, sarif, github, gitlab, markdown[m
+  [38;2;230;230;234m                            or junit (default "pretty")[m
         [1;38;2;230;230;234m--framework string[m    [38;2;230;230;234mmigration tool to use instead of detecting it: sqitch, atlas,[m
   [38;2;230;230;234m                            prisma, drizzle, goose, dbmate, golang-migrate, flyway, sql[m
+        [1;38;2;230;230;234m--no-baseline[m         [38;2;230;230;234mreport findings even if they're recorded in a baseline[m
     [1;38;2;230;230;234m-o, --output file[m         [38;2;230;230;234malso write a report to a file, such as migrail.sarif or[m
   [38;2;230;230;234m                            junit=report.xml (repeatable)[m
     [1;38;2;230;230;234m-q, --quiet[m               [38;2;230;230;234mprint only findings and the summary[m

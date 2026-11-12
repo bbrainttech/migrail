@@ -75,6 +75,7 @@ type finding struct {
 	Location    location      `json:"location"`
 	Statement   statement     `json:"statement"`
 	Lock        *lock         `json:"lock,omitempty"`
+	Impact      *impact       `json:"impact,omitempty"`
 	Fix         *fix          `json:"fix,omitempty"`
 	MigrationID string        `json:"migrationId"`
 	Fingerprint string        `json:"fingerprint"`
@@ -111,6 +112,16 @@ type lock struct {
 	Blocks  []string `json:"blocks"`
 	Rewrite bool     `json:"rewrite"`
 	Scan    bool     `json:"scan"`
+}
+
+type impact struct {
+	Table      string  `json:"table"`
+	Rows       int64   `json:"rows"`
+	Bytes      int64   `json:"bytes"`
+	MinSeconds float64 `json:"minSeconds,omitempty"`
+	MaxSeconds float64 `json:"maxSeconds,omitempty"`
+	Blocked    string  `json:"blocked,omitempty"`
+	Source     string  `json:"source"`
 }
 
 type fix struct {
@@ -198,6 +209,18 @@ func countSeverity(s *summary, severity ir.Severity) {
 	}
 }
 
+func buildImpact(i *ir.Impact) *impact {
+	return &impact{
+		Table:      i.Table,
+		Rows:       i.Rows,
+		Bytes:      i.Bytes,
+		MinSeconds: i.MinDuration.Seconds(),
+		MaxSeconds: i.MaxDuration.Seconds(),
+		Blocked:    i.Blocked,
+		Source:     "live",
+	}
+}
+
 func buildFinding(f ir.Finding) finding {
 	out := finding{
 		RuleID:     f.RuleID,
@@ -217,6 +240,10 @@ func buildFinding(f ir.Finding) finding {
 
 	if f.Statement != nil {
 		out.Statement = statement{Index: f.Statement.Index, SQL: f.Statement.SQL, InTransaction: f.Statement.InTx}
+	}
+
+	if f.Impact != nil {
+		out.Impact = buildImpact(f.Impact)
 	}
 
 	if f.Suppressed != nil {

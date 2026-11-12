@@ -3,6 +3,7 @@ package postgres
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	pg_query "github.com/pganalyze/pg_query_go/v6"
 
@@ -105,8 +106,17 @@ func normalizeIdentifier(text string) string {
 	return strings.ToLower(text)
 }
 
+var grammarVersion = sync.OnceValue(func() int32 {
+	tree, err := pg_query.Parse("SELECT 1")
+	if err != nil {
+		return 0
+	}
+
+	return tree.GetVersion()
+})
+
 func Deparse(stmt *pg_query.Node) (string, error) {
-	tree := &pg_query.ParseResult{Stmts: []*pg_query.RawStmt{{Stmt: stmt}}}
+	tree := &pg_query.ParseResult{Version: grammarVersion(), Stmts: []*pg_query.RawStmt{{Stmt: stmt}}}
 
 	sql, err := pg_query.Deparse(tree)
 	if err != nil {

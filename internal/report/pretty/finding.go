@@ -84,6 +84,10 @@ func (r renderer) labels(finding ir.Finding, gutter int) []string {
 		labels = append(labels, label{name: "lock", style: t.Muted, lines: r.lockLines(finding.Lock, width)})
 	}
 
+	if finding.Impact != nil {
+		labels = append(labels, label{name: "impact", style: t.Muted, lines: r.impactLines(finding.Impact, width)})
+	}
+
 	if finding.Label == "" && finding.Why != "" {
 		labels = append(labels, label{name: "why", style: t.Muted, lines: plainLines(t.Fg, components.Wrap(finding.Why, width))})
 	}
@@ -142,6 +146,22 @@ func (r renderer) lockLines(lock *ir.LockImpact, width int) []string {
 		text += r.dot() + t.Fg.Render("rewrites the table")
 	}
 
+	if visibleWidth(text) <= width {
+		return []string{text}
+	}
+
+	return plainLines(t.Fg, components.Wrap(ansi.Strip(text), width))
+}
+
+func (r renderer) impactLines(impact *ir.Impact, width int) []string {
+	t := r.t
+	dash := "-"
+
+	if t.Symbols.Unicode {
+		dash = "–"
+	}
+
+	text := t.Fg.Render(strings.Join(impact.Parts(dash), " "+t.Symbols.Dot+" ")) + "  " + t.Notice.Render("(live)")
 	if visibleWidth(text) <= width {
 		return []string{text}
 	}

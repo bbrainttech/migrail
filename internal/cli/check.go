@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/bbrainttech/migrail/internal/analyze"
+	"github.com/bbrainttech/migrail/internal/baseline"
 	"github.com/bbrainttech/migrail/internal/config"
 	pg "github.com/bbrainttech/migrail/internal/dialect/postgres"
 	"github.com/bbrainttech/migrail/internal/discovery"
@@ -31,10 +33,11 @@ const (
 	formatGitHub   = "github"
 	formatMarkdown = "markdown"
 	formatJUnit    = "junit"
+	formatGitLab   = "gitlab"
 	failOnNever    = "never"
 )
 
-var formats = []string{formatPretty, formatJSON, formatSARIF, formatGitHub, formatMarkdown, formatJUnit}
+var formats = []string{formatPretty, formatJSON, formatSARIF, formatGitHub, formatGitLab, formatMarkdown, formatJUnit}
 
 var failOnLevels = []string{string(ir.SeverityError), string(ir.SeverityWarning), string(ir.SeverityNotice), failOnNever}
 
@@ -56,6 +59,10 @@ type checkOptions struct {
 	verbose   bool
 	ci        bool
 	ui        *uiFlags
+
+	baselinePath string
+	noBaseline   bool
+	databaseURL  string
 }
 
 func newCheckCommand(ui *uiFlags) *cobra.Command {
@@ -73,7 +80,7 @@ func newCheckCommand(ui *uiFlags) *cobra.Command {
 	}
 
 	flags := cmd.Flags()
-	flags.StringVarP(&opts.format, "format", "f", formatPretty, "output format: pretty, json, sarif, github, markdown or junit")
+	flags.StringVarP(&opts.format, "format", "f", formatPretty, "output format: pretty, json, sarif, github, gitlab, markdown or junit")
 	flags.StringVar(&opts.dbVersion, "db-version", "", "PostgreSQL major version in production, such as 16 (default: 12)")
 	flags.StringVar(&opts.failOn, "fail-on", string(ir.SeverityError), "exit with code 1 on findings at or above: error, warning, notice or never")
 	flags.StringSliceVarP(&opts.rules, "rule", "r", nil, "only run these rules, by ID or slug")
@@ -87,19 +94,53 @@ func newCheckCommand(ui *uiFlags) *cobra.Command {
 	flags.BoolVarP(&opts.quiet, "quiet", "q", false, "print only findings and the summary")
 	flags.BoolVarP(&opts.verbose, "verbose", "v", false, "print each phase with its timing")
 	flags.BoolVar(&opts.ci, "ci", false, "CI mode: no color, links or spinners unless forced")
+	flags.StringVar(&opts.baselinePath, "baseline", "", "baseline `file` to use (default: "+baseline.FileName+" at the project root)")
+	flags.BoolVar(&opts.noBaseline, "no-baseline", false, "report findings even if they're recorded in a baseline")
+	flags.StringVar(&opts.databaseURL, "db", "", "read-only database `url` for table sizes and time estimates (or "+databaseURLEnv+")")
 
 	return cmd
 }
 
 func runCheck(ctx context.Context, cmd *cobra.Command, args []string, opts checkOptions) error {
 	started := time.Now()
-	dialect := pg.New()
 
-	dbVersion, outputs, err := prepareCheck(cmd, dialect, &opts)
+	dialect, dbVersion, outputs, err := prepareCheck(cmd, &opts)
 	if err != nil {
 		return err
 	}
 
+	settings := opts.ui.settings(ciEnabled(opts.ci))
+
+	report, err := analyzeProject(ctx, cmd, args, opts, dialect, dbVersion)
+	if err != nil {
+		return err
+	}
+
+	report.elapsed = time.Since(started)
+
+	if err := writeOutputs(report, outputs); err != nil {
+		return err
+	}
+
+	if err := writeGitHubSummary(report, opts.ui.env); err != nil {
+		return err
+	}
+
+	if err := writeStdout(cmd.OutOrStdout(), opts, settings, report); err != nil {
+		return internalError(err)
+	}
+
+	return checkOutcome(report.result, opts.failOn, opts.format == formatPretty)
+}
+
+func analyzeProject(
+	ctx context.Context,
+	cmd *cobra.Command,
+	args []string,
+	opts checkOptions,
+	dialect *pg.Dialect,
+	dbVersion ir.Version,
+) (checkReport, error) {
 	settings := opts.ui.settings(ciEnabled(opts.ci))
 	stderr := newDisplay(cmd.ErrOrStderr(), settings)
 	phases := progress.New(stderr.out, cmd.ErrOrStderr(), stderr.theme, progress.Options{
@@ -113,12 +154,19 @@ func runCheck(ctx context.Context, cmd *cobra.Command, args []string, opts check
 	if err != nil {
 		finish.Abort()
 
-		return err
+		return checkReport{}, err
 	}
 
 	finish.Done("Discovered", fmt.Sprintf("%d %s", len(migrations), components.Plural(len(migrations), "migration", "migrations")))
 
-	if opts.dbVersion == "" && !opts.quiet {
+	session := openLiveSession(ctx, opts, phases, stderr, len(migrations))
+	if session != nil {
+		defer session.Close(ctx)
+
+		dbVersion = liveVersion(session, dbVersion, opts, stderr)
+	}
+
+	if opts.dbVersion == "" && session == nil && !opts.quiet {
 		writeNotice(stderr, fmt.Sprintf("assuming PostgreSQL %s. Set --db-version for advice that matches your version.", dbVersion))
 	}
 
@@ -133,61 +181,59 @@ func runCheck(ctx context.Context, cmd *cobra.Command, args []string, opts check
 		finish.Abort()
 
 		if errors.Is(err, context.Canceled) {
-			return err
+			return checkReport{}, err
 		}
 
-		return internalError(err)
+		return checkReport{}, internalError(err)
 	}
 
-	result = applySuppressions(result, migrations, dialect, dbVersion, opts)
+	if err := annotateImpact(ctx, session, result.Findings, opts, stderr); err != nil {
+		finish.Abort()
+
+		return checkReport{}, err
+	}
+
+	result, err = applySuppressions(result, migrations, dialect, dbVersion, opts)
+	if err != nil {
+		finish.Abort()
+
+		return checkReport{}, err
+	}
 
 	finish.Done("Analyzed", fmt.Sprintf("%d %s %s %d rules", result.Statements, components.Plural(result.Statements, "statement", "statements"), stderr.theme.Symbols.Dot, result.RulesRun))
 
-	report := checkReport{
+	return checkReport{
 		dialect:    dialect,
 		dbVersion:  dbVersion,
 		migrations: migrations,
 		scope:      scope,
 		result:     result,
 		failOn:     opts.failOn,
-		elapsed:    time.Since(started),
-	}
-
-	if err := writeOutputs(report, outputs); err != nil {
-		return err
-	}
-
-	if err := writeGitHubSummary(report, opts.ui.env); err != nil {
-		return err
-	}
-
-	if err := writeStdout(cmd.OutOrStdout(), opts, settings, report); err != nil {
-		return internalError(err)
-	}
-
-	return checkOutcome(result, opts.failOn, opts.format == formatPretty)
+	}, nil
 }
 
-func prepareCheck(cmd *cobra.Command, dialect *pg.Dialect, opts *checkOptions) (ir.Version, []outputTarget, error) {
+func prepareCheck(cmd *cobra.Command, opts *checkOptions) (*pg.Dialect, ir.Version, []outputTarget, error) {
+	dialect := pg.New()
+
 	if err := applyConfig(cmd, opts); err != nil {
-		return ir.Version{}, nil, err
+		return nil, ir.Version{}, nil, err
 	}
 
 	if err := opts.ui.validate(); err != nil {
-		return ir.Version{}, nil, err
+		return nil, ir.Version{}, nil, err
 	}
 
 	dbVersion, err := validateCheckOptions(dialect, *opts)
 	if err != nil {
-		return ir.Version{}, nil, err
+		return nil, ir.Version{}, nil, err
 	}
 
 	outputs, err := parseOutputs(opts.outputs)
 	if err != nil {
-		return ir.Version{}, nil, err
+		return nil, ir.Version{}, nil, err
 	}
 
-	return dbVersion, outputs, nil
+	return dialect, dbVersion, outputs, nil
 }
 
 func collectMigrations(
@@ -245,7 +291,7 @@ func applySuppressions(
 	dialect *pg.Dialect,
 	dbVersion ir.Version,
 	opts checkOptions,
-) analyze.Result {
+) (analyze.Result, error) {
 	all := rules.All()
 	active := map[string]bool{}
 
@@ -266,6 +312,11 @@ func applySuppressions(
 		PathOf:        relativeToRoot(opts.root),
 		Active:        func(ruleID string) bool { return active[ruleID] },
 	})
+
+	if err := applyBaseline(result.Findings, opts); err != nil {
+		return analyze.Result{}, err
+	}
+
 	severityOverrides(opts.cfg, result.Findings)
 
 	kept := result.Findings[:0]
@@ -277,7 +328,35 @@ func applySuppressions(
 
 	result.Findings = kept
 
-	return result
+	return result, nil
+}
+
+func applyBaseline(findings []ir.Finding, opts checkOptions) error {
+	if opts.noBaseline {
+		return nil
+	}
+
+	path := opts.baselinePath
+	if path == "" {
+		path = filepath.Join(opts.root, baseline.FileName)
+	}
+
+	file, found, err := baseline.Load(path)
+	if err != nil {
+		return err
+	}
+
+	if !found {
+		if opts.baselinePath != "" {
+			return fmt.Errorf("baseline %s doesn't exist: run migrail baseline to create it", opts.baselinePath)
+		}
+
+		return nil
+	}
+
+	file.Apply(findings)
+
+	return nil
 }
 
 func writeNotice(d display, message string) {

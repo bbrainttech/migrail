@@ -21,6 +21,7 @@ const (
 	goldenDir         = "../../testdata/golden/json"
 	sarifGoldenDir    = "../../testdata/golden/sarif"
 	githubGoldenDir   = "../../testdata/golden/github"
+	gitlabGoldenDir   = "../../testdata/golden/gitlab"
 	markdownGoldenDir = "../../testdata/golden/markdown"
 	junitGoldenDir    = "../../testdata/golden/junit"
 	mr101Basic        = fixtures + "/MR101/bad/basic.sql"
@@ -187,6 +188,17 @@ func TestCheckGitHubGolden(t *testing.T) {
 	run := runCLI(t, "", args...)
 
 	golden.Assert(t, filepath.Join(githubGoldenDir, "mixed.txt"), run.stdout)
+}
+
+func TestCheckGitLabGolden(t *testing.T) {
+	t.Parallel()
+
+	run := runCLI(t, "", "check", "-f", "gitlab", mr101Basic, fixtures+"/MR107/bad/basic.sql")
+	if run.code != exitFindings {
+		t.Fatalf("exit code = %d, want %d\nstderr: %s", run.code, exitFindings, run.stderr)
+	}
+
+	golden.Assert(t, filepath.Join(gitlabGoldenDir, "mixed.json"), run.stdout)
 }
 
 func TestCheckMarkdownGolden(t *testing.T) {

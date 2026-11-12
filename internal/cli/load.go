@@ -20,6 +20,7 @@ import (
 type loader struct {
 	dialect *pg.Dialect
 	cwd     string
+	root    string
 	forced  adapters.Adapter
 	seen    map[string]bool
 }
@@ -38,7 +39,7 @@ func loadMigrations(ctx context.Context, dialect *pg.Dialect, args []string, opt
 		return nil, internalError(fmt.Errorf("find working directory: %w", err))
 	}
 
-	l := loader{dialect: dialect, cwd: cwd, seen: map[string]bool{}}
+	l := loader{dialect: dialect, cwd: cwd, root: absolutePath(cwd, opts.root), seen: map[string]bool{}}
 	if opts.framework != "" {
 		l.forced, _ = discovery.AdapterNamed(opts.framework)
 	}
@@ -224,18 +225,25 @@ func (l loader) load(root string, adapter adapters.Adapter, file adapters.File) 
 	}
 
 	migration.SourcePath = display
-	migration.ID = adapter.Name() + ":" + display
+	migration.ID = adapter.Name() + ":" + l.fromProjectRoot(root, file.Path)
 
 	return migration, nil
 }
 
 func (l loader) display(root, name string) string {
-	absolute := filepath.Join(root, filepath.FromSlash(name))
-	if !filepath.IsAbs(absolute) {
-		absolute = filepath.Join(l.cwd, absolute)
-	}
+	return relativeTo(l.cwd, l.absolute(root, name))
+}
 
-	relative, err := filepath.Rel(l.cwd, absolute)
+func (l loader) fromProjectRoot(root, name string) string {
+	return relativeTo(l.root, l.absolute(root, name))
+}
+
+func (l loader) absolute(root, name string) string {
+	return absolutePath(l.cwd, filepath.Join(root, filepath.FromSlash(name)))
+}
+
+func relativeTo(base, absolute string) string {
+	relative, err := filepath.Rel(base, absolute)
 	if err != nil {
 		return filepath.ToSlash(absolute)
 	}

@@ -18,10 +18,18 @@
   [38;2;230;230;234m                            to compare against[m
   [38;2;230;230;234m                            (default: origin/HEAD,[m
   [38;2;230;230;234m                            main or master)[m
+        [1;38;2;230;230;234m--baseline file[m       [38;2;230;230;234mbaseline file to use[m
+  [38;2;230;230;234m                            (default:[m
+  [38;2;230;230;234m                            .migrail-baseline.json[m
+  [38;2;230;230;234m                            at the project root)[m
         [1;38;2;230;230;234m--ci[m                  [38;2;230;230;234mCI mode: no color,[m
   [38;2;230;230;234m                            links or spinners[m
   [38;2;230;230;234m                            unless forced[m
         [1;38;2;230;230;234m--compact[m             [38;2;230;230;234mprint one line per finding[m
+        [1;38;2;230;230;234m--db url[m              [38;2;230;230;234mread-only database url[m
+  [38;2;230;230;234m                            for table sizes and[m
+  [38;2;230;230;234m                            time estimates (or[m
+  [38;2;230;230;234m                            MIGRAIL_DATABASE_URL)[m
         [1;38;2;230;230;234m--db-version string[m   [38;2;230;230;234mPostgreSQL major[m
   [38;2;230;230;234m                            version in production,[m
   [38;2;230;230;234m                            such as 16 (default: 12)[m
@@ -35,14 +43,17 @@
   [38;2;230;230;234m                            or never (default "error")[m
     [1;38;2;230;230;234m-f, --format string[m       [38;2;230;230;234moutput format: pretty,[m
   [38;2;230;230;234m                            json, sarif, github,[m
-  [38;2;230;230;234m                            markdown or junit[m
-  [38;2;230;230;234m                            (default "pretty")[m
+  [38;2;230;230;234m                            gitlab, markdown or[m
+  [38;2;230;230;234m                            junit (default "pretty")[m
         [1;38;2;230;230;234m--framework string[m    [38;2;230;230;234mmigration tool to use[m
   [38;2;230;230;234m                            instead of detecting[m
   [38;2;230;230;234m                            it: sqitch, atlas,[m
   [38;2;230;230;234m                            prisma, drizzle,[m
   [38;2;230;230;234m                            goose, dbmate,[m
   [38;2;230;230;234m                            golang-migrate, flyway, sql[m
+        [1;38;2;230;230;234m--no-baseline[m         [38;2;230;230;234mreport findings even[m
+  [38;2;230;230;234m                            if they're recorded in[m
+  [38;2;230;230;234m                            a baseline[m
     [1;38;2;230;230;234m-o, --output file[m         [38;2;230;230;234malso write a report to[m
   [38;2;230;230;234m                            a file, such as[m
   [38;2;230;230;234m                            migrail.sarif or[m

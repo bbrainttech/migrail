@@ -1,0 +1,25 @@
+# Add to .gitlab-ci.yml:
+#
+#   include:
+#     - remote: https://raw.githubusercontent.com/bbrainttech/migrail/main/integrations/gitlab/migrail.gitlab-ci.yml
+#
+# Set MIGRAIL_ARGS for extra check flags, such as --db-version 16.
+
+migrail:
+  stage: test
+  image: alpine:3
+  variables:
+    GIT_DEPTH: "0"
+    MIGRAIL_ARGS: ""
+  before_script:
+    - apk add --no-cache curl git tar
+    - curl -fsSL https://github.com/bbrainttech/migrail/releases/latest/download/install.sh | sh -s -- --dir /usr/local/bin
+  script:
+    - migrail check --ci -o gitlab=gl-code-quality-report.json -o junit=migrail-junit.xml $MIGRAIL_ARGS
+  artifacts:
+    when: always
+    reports:
+      codequality: gl-code-quality-report.json
+      junit: migrail-junit.xml
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"

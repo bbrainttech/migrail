@@ -23,6 +23,27 @@
           "description": "PostgreSQL major version in production, 12 to 18.",
           "type": "string",
           "pattern": "^(1[2-8])(\\.[0-9]+)?$"
+        },
+        "url_env": {
+          "description": "Name of the environment variable that holds a read-only database URL for live mode. Never put the URL itself here.",
+          "type": "string"
+        }
+      }
+    },
+    "thresholds": {
+      "description": "Table sizes that change severity in live mode.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "small_table_rows": {
+          "description": "Below this many rows, and under 10 MB, lock and rewrite findings drop one level.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "large_table_rows": {
+          "description": "Above this many rows, or over 10 GB, lock and rewrite warnings become errors.",
+          "type": "integer",
+          "minimum": 0
         }
       }
     },
@@ -93,7 +114,7 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "format": { "enum": ["pretty", "json", "sarif", "github", "markdown", "junit"] },
+        "format": { "enum": ["pretty", "json", "sarif", "github", "gitlab", "markdown", "junit"] },
         "theme": { "enum": ["auto", "dark", "light", "mono"] },
         "color": { "enum": ["auto", "always", "never"] },
         "compact": { "type": "boolean" },

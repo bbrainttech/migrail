@@ -16,7 +16,7 @@ var (
 	severities   = []string{"error", "warning", "notice", "off"}
 	failOnLevels = []string{"error", "warning", "notice", "never"}
 	checkModes   = []string{"changed", "all"}
-	formats      = []string{"pretty", "json", "sarif", "github", "markdown", "junit"}
+	formats      = []string{"pretty", "json", "sarif", "github", "gitlab", "markdown", "junit"}
 	themes       = []string{"auto", "dark", "light", "mono"}
 	switches     = []string{"auto", "always", "never"}
 	dialects     = []string{"postgres"}
@@ -46,6 +46,10 @@ func validate(cfg Config, path string, data []byte) error {
 		if !contains(check.options, check.value) {
 			return errorAt(path, data, check.yamlPath, fmt.Sprintf("invalid %s %q", check.label, check.value), check.options)
 		}
+	}
+
+	if cfg.Thresholds.SmallTableRows < 0 || cfg.Thresholds.LargeTableRows < 0 {
+		return errorAt(path, data, "$.thresholds", "thresholds can't be negative", nil)
 	}
 
 	if cfg.DB.Version != "" {

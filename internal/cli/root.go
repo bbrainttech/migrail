@@ -168,7 +168,9 @@ func newRoot(stdout, stderr io.Writer, environ []string) (*cobra.Command, *uiFla
 
 	root.SetOut(stdout)
 	root.SetErr(stderr)
-	root.AddCommand(newCheckCommand(ui), newExplainCommand(ui), newRulesCommand(ui), newSchemaCommand(), newVersionCommand(ui))
+	root.AddCommand(
+		newCheckCommand(ui), newBaselineCommand(ui), newExplainCommand(ui), newRulesCommand(ui), newSchemaCommand(), newVersionCommand(ui),
+	)
 	installHelp(root, ui)
 
 	return root, ui

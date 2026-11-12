@@ -96,6 +96,10 @@ func message(finding ir.Finding) string {
 		parts = append(parts, finding.Why)
 	}
 
+	if finding.Impact != nil {
+		parts = append(parts, "Impact: "+strings.Join(finding.Impact.Parts("–"), ", "))
+	}
+
 	if finding.Fix != nil && finding.Fix.Summary != "" {
 		parts = append(parts, "Fix: "+finding.Fix.Summary)
 

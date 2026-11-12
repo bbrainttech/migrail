@@ -29,12 +29,20 @@ type Config struct {
 	Ignore   []Ignore               `yaml:"ignore"`
 	Output   Output                 `yaml:"output"`
 
+	Thresholds Thresholds `yaml:"thresholds"`
+
 	Path string `yaml:"-"`
 }
 
 type DB struct {
 	Dialect string `yaml:"dialect"`
 	Version string `yaml:"version"`
+	URLEnv  string `yaml:"url_env"`
+}
+
+type Thresholds struct {
+	SmallTableRows int64 `yaml:"small_table_rows"`
+	LargeTableRows int64 `yaml:"large_table_rows"`
 }
 
 type Project struct {

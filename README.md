@@ -99,7 +99,30 @@ jobs:
 | `working-directory` | `.` | Directory to run in. |
 | `version` | the action's tag | migrail release to install. |
 
-On other CI systems, install migrail and run `migrail check`. Write reports for your CI with `-o`, for example a JUnit report for GitLab or Jenkins:
+For GitLab, include the template. It runs on merge requests and adds findings to the Code Quality widget and test report:
+
+```yaml
+# .gitlab-ci.yml
+include:
+  - remote: https://raw.githubusercontent.com/bbrainttech/migrail/main/integrations/gitlab/migrail.gitlab-ci.yml
+
+migrail:
+  variables:
+    MIGRAIL_ARGS: --db-version 16
+```
+
+For [pre-commit](https://pre-commit.com), install migrail and add the hook:
+
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/bbrainttech/migrail
+    rev: main
+    hooks:
+      - id: migrail
+```
+
+On other CI systems, install migrail and run `migrail check`. Write reports for your CI with `-o`, for example a JUnit report for Jenkins:
 
 ```
 migrail check -o junit=reports/migrail.xml
@@ -163,6 +186,29 @@ CREATE INDEX idx_orders_status ON orders (status);
 
 `migrail:ignore` applies to the next statement, and `migrail:ignore-file` to the whole file. Without a reason, the finding is still reported.
 
+Adopt migrail in a repository that already has old migrations. `baseline` checks every migration and records what it finds, so `migrail check --all` reports only new findings from then on:
+
+```
+migrail baseline
+git add .migrail-baseline.json
+```
+
+Run it again after you fix old findings. To see everything, pass `--no-baseline`.
+
+Get real numbers from a staging database. Point migrail at a read-only URL and it adds the table's size and an estimate of how long the lock lasts. Findings on small tables drop one level, and warnings on very large tables become errors:
+
+```
+export MIGRAIL_DATABASE_URL=postgres://readonly@staging.internal/app
+migrail check
+```
+
+```
+├─ lock    SHARE on orders · blocks INSERT, UPDATE, DELETE
+├─ impact  41.2M rows · 18.4 GB · est. 4–22 min of blocked writes  (live)
+```
+
+migrail only reads catalog statistics, in a read-only transaction. It never reads your tables' rows. Estimates are rough ranges, so treat them as an order of magnitude.
+
 Get machine-readable output:
 
 ```
@@ -177,10 +223,13 @@ migrail check -f json > report.json
 | `--all` | Check every migration, not only the ones changed since the base branch. |
 | `--base` | Branch or commit to compare against. Defaults to `origin/HEAD`, then `main` or `master`. |
 | `--fail-on` | Exit with code 1 on findings at or above `error` (default), `warning` or `notice`. `never` always exits 0. |
-| `-f`, `--format` | Output format: `pretty` (default), `json`, `sarif`, `github`, `markdown` or `junit`. |
-| `-o`, `--output` | Also write a report to a file. The format comes from the extension (`.sarif`, `.json`, `.md`, `.xml` for JUnit, `.txt`) or a prefix, such as `junit=report.xml`. Repeatable. |
+| `-f`, `--format` | Output format: `pretty` (default), `json`, `sarif`, `github`, `gitlab`, `markdown` or `junit`. |
+| `-o`, `--output` | Also write a report to a file. The format comes from the extension (`.sarif`, `.json`, `.md`, `.xml` for JUnit, `.txt`) or a prefix, such as `junit=report.xml` or `gitlab=gl-code-quality-report.json`. Repeatable. |
 | `-r`, `--rule` | Only run these rules, by ID or name. |
 | `--skip-rule` | Skip these rules, by ID or name. |
+| `--db` | Read-only database URL for table sizes and time estimates. `MIGRAIL_DATABASE_URL` works too, and is safer because the URL stays out of your shell history. |
+| `--baseline` | Baseline file to use. Defaults to `.migrail-baseline.json` at the project root. |
+| `--no-baseline` | Report findings even if they're recorded in a baseline. |
 | `-d`, `--dir` | Project root to search. Defaults to the repository root. |
 | `--framework` | Use this migration tool instead of detecting it. |
 | `--compact` | One line per finding. |
@@ -221,6 +270,10 @@ Flags override the config file. `migrail schema config` prints the JSON schema f
 version: 1
 db:
   version: "16"
+  url_env: STAGING_DATABASE_URL  # variable that holds a read-only URL, never the URL itself
+thresholds:
+  small_table_rows: 10000     # below this, and under 10 MB, lock findings drop one level
+  large_table_rows: 10000000  # above this, or over 10 GB, lock warnings become errors
 projects:                     # omit to detect projects automatically
   - path: services/api
     framework: goose
@@ -238,7 +291,7 @@ ignore:
     path: "legacy/**"
     reason: legacy tables are dropped on purpose
 output:
-  format: pretty              # pretty, json, sarif, github, markdown or junit
+  format: pretty              # pretty, json, sarif, github, gitlab, markdown or junit
   theme: auto
 ```
 

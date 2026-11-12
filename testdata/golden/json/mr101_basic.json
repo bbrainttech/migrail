@@ -21,7 +21,7 @@
   },
   "migrations": [
     {
-      "id": "sql:../../testdata/sql/MR101/bad/basic.sql",
+      "id": "sql:testdata/sql/MR101/bad/basic.sql",
       "path": "../../testdata/sql/MR101/bad/basic.sql",
       "changeState": "new",
       "framework": "sql",
@@ -78,8 +78,8 @@
           }
         ]
       },
-      "migrationId": "sql:../../testdata/sql/MR101/bad/basic.sql",
-      "fingerprint": "259e7a9b78aa2b606f19d6e8ba7419f0b86d3ce39c7288798abe5889d51de550"
+      "migrationId": "sql:testdata/sql/MR101/bad/basic.sql",
+      "fingerprint": "fba5784e502ee8b9ed1daf6dd635c05e11c895f3ad4ab6a3eb10ff46e0fdccd5"
     },
     {
       "ruleId": "MR403",
@@ -116,8 +116,8 @@
           }
         ]
       },
-      "migrationId": "sql:../../testdata/sql/MR101/bad/basic.sql",
-      "fingerprint": "8cd3cc11efd06427b906077b674c2a8e69eda33cbe66c235608efe8ad944058f"
+      "migrationId": "sql:testdata/sql/MR101/bad/basic.sql",
+      "fingerprint": "6d3dc260af85338634d1d5d17c7fda8720ae09ca0e4f16bb1b434702aaec6114"
     }
   ],
   "ruleErrors": []

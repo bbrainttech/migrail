@@ -159,6 +159,10 @@ func writeFinding(out *strings.Builder, finding ir.Finding) {
 		fmt.Fprintf(out, "**Lock:** %s\n\n", lockText(finding.Lock))
 	}
 
+	if finding.Impact != nil {
+		fmt.Fprintf(out, "**Impact:** %s (live)\n\n", strings.Join(finding.Impact.Parts("–"), " · "))
+	}
+
 	if finding.Why != "" {
 		fmt.Fprintf(out, "**Why:** %s\n\n", finding.Why)
 	}

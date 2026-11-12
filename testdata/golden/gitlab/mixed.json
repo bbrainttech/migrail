@@ -1,0 +1,50 @@
+[
+  {
+    "description": "MR101 Index creation blocks writes on \"orders\"",
+    "check_name": "MR101",
+    "fingerprint": "fba5784e502ee8b9ed1daf6dd635c05e11c895f3ad4ab6a3eb10ff46e0fdccd5",
+    "severity": "critical",
+    "location": {
+      "path": "../../testdata/sql/MR101/bad/basic.sql",
+      "lines": {
+        "begin": 1
+      }
+    }
+  },
+  {
+    "description": "MR403 No lock_timeout before locking DDL",
+    "check_name": "MR403",
+    "fingerprint": "6d3dc260af85338634d1d5d17c7fda8720ae09ca0e4f16bb1b434702aaec6114",
+    "severity": "major",
+    "location": {
+      "path": "../../testdata/sql/MR101/bad/basic.sql",
+      "lines": {
+        "begin": 1
+      }
+    }
+  },
+  {
+    "description": "MR107 SET NOT NULL on \"orders.status\" blocks reads and writes during a full table scan",
+    "check_name": "MR107",
+    "fingerprint": "7706a7a1ba8c36173d1bb40ae81251af1762eb76d012f842348e8b76a76d97f8",
+    "severity": "critical",
+    "location": {
+      "path": "../../testdata/sql/MR107/bad/basic.sql",
+      "lines": {
+        "begin": 1
+      }
+    }
+  },
+  {
+    "description": "MR403 No lock_timeout before locking DDL",
+    "check_name": "MR403",
+    "fingerprint": "8036b0da1dccaa29b5f77a10347939bce3155c275b3d4c6dd6dee07e13630fa7",
+    "severity": "major",
+    "location": {
+      "path": "../../testdata/sql/MR107/bad/basic.sql",
+      "lines": {
+        "begin": 1
+      }
+    }
+  }
+]

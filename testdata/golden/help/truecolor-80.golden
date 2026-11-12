@@ -16,6 +16,7 @@
     [38;2;230;230;234mmigrail <command> [flags][m
 
   [1;38;2;124;140;255mCommands[m
+    [1;38;2;230;230;234mbaseline    [m[38;2;230;230;234mRecord today's findings so only new ones are reported[m
     [1;38;2;230;230;234mcheck       [m[38;2;230;230;234mCheck SQL migrations for locks, rewrites and breaking changes[m
     [1;38;2;230;230;234mexplain     [m[38;2;230;230;234mExplain what a rule detects and how to fix it[m
     [1;38;2;230;230;234mrules       [m[38;2;230;230;234mList every rule with its severity and category[m

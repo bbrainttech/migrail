@@ -13,9 +13,13 @@
                               changed since the base branch
         --base string         git branch or commit to compare against
                               (default: origin/HEAD, main or master)
+        --baseline file       baseline file to use (default:
+                              .migrail-baseline.json at the project root)
         --ci                  CI mode: no color, links or spinners
                               unless forced
         --compact             print one line per finding
+        --db url              read-only database url for table sizes and
+                              time estimates (or MIGRAIL_DATABASE_URL)
         --db-version string   PostgreSQL major version in production,
                               such as 16 (default: 12)
     -d, --dir string          project root to search for migrations
@@ -24,10 +28,13 @@
                               error, warning, notice or never (default
                               "error")
     -f, --format string       output format: pretty, json, sarif,
-                              github, markdown or junit (default "pretty")
+                              github, gitlab, markdown or junit (default
+                              "pretty")
         --framework string    migration tool to use instead of detecting
                               it: sqitch, atlas, prisma, drizzle, goose,
                               dbmate, golang-migrate, flyway, sql
+        --no-baseline         report findings even if they're recorded
+                              in a baseline
     -o, --output file         also write a report to a file, such as
                               migrail.sarif or junit=report.xml (repeatable)
     -q, --quiet               print only findings and the summary
