@@ -1393,7 +1393,7 @@ For each lock-model row (§10.1) and each Postgres version 12–18 (testcontaine
 5. Detect rewrite: compare `pg_class.relfilenode` before/after.
 6. Output `lockmodel.verified.json`, and CI **fails if the lock model table disagrees** with observed behavior.
 
-Runs nightly + on changes to `dialect/postgres/lockmodel`.
+Runs on changes to `dialect/postgres/lockmodel` and by hand from the Actions tab. The nightly run is off to save Actions minutes.
 
 ### 23.4 Framework integration tests
 `testdata/projects/` contains tiny real apps (Django, Rails, Laravel, Prisma, EF Core, Knex, TypeORM, Sequelize, Alembic, Spring+Flyway, Go+goose). CI job per framework (Docker images with runtimes) runs `migrail check` and compares against expected findings, including capture mode.
